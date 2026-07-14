@@ -6,24 +6,21 @@ namespace Sitegeist\SlopMachine\Domain;
 
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
+use Mcp\Schema\ToolAnnotations;
 use Neos\ContentRepository\Domain\Model\Node;
-use Neos\ContentRepository\Domain\Service\ContentDimensionPresetSourceInterface;
 use Neos\ContentRepository\Domain\Service\NodeTypeManager;
 use Neos\ContentRepository\Domain\Utility\NodePaths;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Property\PropertyMapper;
-use Neos\Flow\Security\Context;
-use Neos\Neos\Domain\Service\ContentContext;
-use Neos\Neos\Domain\Service\ContentContextFactory;
+use Neos\Flow\Security\Context as SecurityContext;
 
 #[Flow\Scope('singleton')]
 class ContentRepositoryWritingElements
 {
     public function __construct(
-        protected ContentContextFactory $contentContextFactory,
-        protected ContentDimensionPresetSourceInterface $contentDimensionPresetSource,
+        protected MCPContentContextFactory $contentContextFactory,
         protected NodeTypeManager $nodeTypeManager,
-        protected Context $securityContext,
+        protected SecurityContext $securityContext,
         protected PropertyMapper $propertyMapper,
     ) {
     }
@@ -149,7 +146,13 @@ class ContentRepositoryWritingElements
                 - With BulkWriting, failed individual commands must be corrected and retried via BulkWriting.
             - Decision rule:
                 - Default = BulkWriting
-                - Single-operation tools = exception case'
+                - Single-operation tools = exception case',
+        annotations: new ToolAnnotations(
+            readOnlyHint: false,
+            destructiveHint: true,
+            idempotentHint: false,
+            openWorldHint: false,
+        )
     )]
     public function bulkWriting(
         #[Schema(
@@ -213,7 +216,7 @@ class ContentRepositoryWritingElements
         ?string $nodeName = null,
         array $references = [],
     ): array {
-        $contentContext = $this->getContentContext($originDimensionSpacePoint);
+        $contentContext = $this->contentContextFactory->getWritingContentContext($originDimensionSpacePoint);
         $result = [];
         $this->securityContext->withoutAuthorizationChecks(
             function() use(
@@ -286,7 +289,7 @@ class ContentRepositoryWritingElements
         array $originDimensionSpacePoint,
         array $propertyValues,
     ): array {
-        $contentContext = $this->getContentContext($originDimensionSpacePoint);
+        $contentContext = $this->contentContextFactory->getWritingContentContext($originDimensionSpacePoint);
         $result = [];
         $this->securityContext->withoutAuthorizationChecks(
             function() use(
@@ -326,7 +329,7 @@ class ContentRepositoryWritingElements
         array $originDimensionSpacePoint,
         array $references,
     ): array {
-        $contentContext = $this->getContentContext($originDimensionSpacePoint);
+        $contentContext = $this->contentContextFactory->getWritingContentContext($originDimensionSpacePoint);
         $result = [];
         $this->securityContext->withoutAuthorizationChecks(
             function() use(
@@ -390,22 +393,5 @@ class ContentRepositoryWritingElements
             }
             $node->setProperty($propertyName, $propertyValue);
         }
-    }
-
-    private function getContentContext(array $originDimensionSpacePoint): ContentContext
-    {
-        $dimensions = [];
-        foreach ($originDimensionSpacePoint as $dimensionName => $dimensionValue) {
-            $dimensions[$dimensionName] = $this->contentDimensionPresetSource->getAllPresets()[$dimensionName]['presets'][$dimensionValue]['values'];
-        }
-        /** @var ContentContext $contentContext */
-        $contentContext = $this->contentContextFactory->create([
-            'workspaceName' => 'user-admin',
-            'dimensions' => $dimensions,
-            'targetDimensions' => $originDimensionSpacePoint,
-            'invisibleContentShown' => true,
-        ]);
-
-        return $contentContext;
     }
 }

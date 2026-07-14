@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Sitegeist\SlopMachine\Domain;
 
 use Mcp\Capability\Attribute\McpResourceTemplate;
+use Mcp\Capability\Attribute\McpTool;
+use Mcp\Schema\ToolAnnotations;
 use Neos\ContentRepository\Domain\Model\Node;
-use Neos\ContentRepository\Domain\Service\ContentDimensionPresetSourceInterface;
 use Neos\Eel\FlowQuery\FlowQuery;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Security\Context;
-use Neos\Neos\Domain\Service\ContentContextFactory;
 use Neos\Neos\Domain\Service\NodeSearchServiceInterface;
 use Neos\Utility\Arrays;
 
@@ -22,8 +22,7 @@ class ContentRepositoryReadingElements
     public const FIND_SUBTREE_URI = 'contentsubgraph://find-subtree/{dimensionSpacePoint}/{entryNodeAggregateId}/{nodeTypeNames}/{maximumLevels}/{limitToPropertyNames}';
 
     public function __construct(
-        protected ContentContextFactory $contentContextFactory,
-        protected ContentDimensionPresetSourceInterface $contentDimensionPresetSource,
+        protected MCPContentContextFactory $contentContextFactory,
         protected Context $securityContext,
         protected NodeSearchServiceInterface $nodeSearchService,
     ) {
@@ -44,6 +43,21 @@ class ContentRepositoryReadingElements
             'purpose' => 'content search'
         ],
     )]
+    /** Also exposed as an MCP search tool so that it can be used by chat clients */
+    #[McpTool(
+        name: 'find-children',
+        description: 'A list of all available child nodes of a given parent that are of a given type.
+            This is a rather efficient query; use this if you already know the parent under which you want to search.
+            To reduce response size, you can limit the returned properties to the list of given names in the parameter limitToPropertyNames.
+            To skip a parameter, provide an asterisk (*) as value.
+            The returned data describes the current state of the content graph and does not give any reliable information on structural constraints.',
+        annotations: new ToolAnnotations(
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+        )
+    )]
     public function findChildren(
         string $dimensionSpacePoint,
         string $parentNodeAggregateId,
@@ -63,16 +77,7 @@ class ContentRepositoryReadingElements
                     $dimensionSpacePoint = \json_decode(\urldecode($dimensionSpacePoint), true, 512, JSON_THROW_ON_ERROR);
                     $nodeTypeNames = $this->resolveSingleValue($nodeTypeNames);
                     $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
-                    $dimensions = [];
-                    foreach ($dimensionSpacePoint as $dimensionName => $dimensionValue) {
-                        $dimensions[$dimensionName] = $this->contentDimensionPresetSource->getAllPresets()[$dimensionName]['presets'][$dimensionValue]['values'];
-                    }
-                    $contentContext = $this->contentContextFactory->create([
-                        'workspaceName' => 'user-admin',
-                        'dimensions' => $dimensions,
-                        'targetDimensions' => $dimensionSpacePoint,
-                        'invisibleContentShown' => true,
-                    ]);
+                    $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
 
                     $ancestorNode = $contentContext->getNodeByIdentifier($parentNodeAggregateId);
                     $flowQuery = new FlowQuery([$ancestorNode]);
@@ -117,6 +122,21 @@ class ContentRepositoryReadingElements
             'purpose' => 'content search'
         ],
     )]
+    /** Also exposed as an MCP search tool so that it can be used by chat clients */
+    #[McpTool(
+        name: 'find-descendants',
+        description: 'A list of all available descendant nodes of a given ancestor that are of a given type and match an optional search term.
+            This is a rather expensive query; use this if do not yet know the structure or the parent to search children of.
+            To reduce response size, you can limit the returned properties to the list of given names in the parameter limitToPropertyNames.
+            To skip a parameter, provide an asterisk (*) as value.
+            The returned data describes the current state of the content graph and does not give any reliable information on structural constraints.',
+        annotations: new ToolAnnotations(
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+        )
+    )]
     public function findDescendants(
         string $dimensionSpacePoint,
         string $ancestorNodeAggregateId,
@@ -138,17 +158,7 @@ class ContentRepositoryReadingElements
                     $dimensionSpacePoint = \json_decode(\urldecode($dimensionSpacePoint), true, 512, JSON_THROW_ON_ERROR);
                     $nodeTypeNames = $this->resolveSingleValue($nodeTypeNames);
                     $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
-
-                    $dimensions = [];
-                    foreach ($dimensionSpacePoint as $dimensionName => $dimensionValue) {
-                        $dimensions[$dimensionName] = $this->contentDimensionPresetSource->getAllPresets()[$dimensionName]['presets'][$dimensionValue]['values'];
-                    }
-                    $contentContext = $this->contentContextFactory->create([
-                        'workspaceName' => 'user-admin',
-                        'dimensions' => $dimensions,
-                        'targetDimensions' => $dimensionSpacePoint,
-                        'invisibleContentShown' => true,
-                    ]);
+                    $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
 
                     if ($searchTerm = $this->resolveSingleValue($searchTerm)) {
                         /** @var Node[] $nodes */
@@ -204,6 +214,24 @@ class ContentRepositoryReadingElements
             'purpose' => 'content search'
         ],
     )]
+    /** Also exposed as an MCP search tool so that it can be used by chat clients */
+    #[McpTool(
+        name: 'find-subtree',
+        description: 'A hierarchical subtree for a single page only.
+            Includes only nodes matching the given base node type.
+            Explicitly excludes nodes under descendant document nodes (subpages).
+            PRIMARY QUERY for editorial single-page content inspection when a page nodeAggregateId is known.
+            To fetch all content from a document, set the node type names to `Neos.Neos:ContentCollection,Neos.Neos:Content`.
+            Use find-descendants only as fallback when the page root is unknown or a cross-page search is explicitly required.
+            To reduce response size, you can limit the returned properties to the list of given names in the parameter limitToPropertyNames.
+            To skip a parameter, provide an asterisk (*) as value.',
+        annotations: new ToolAnnotations(
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+        )
+    )]
     public function findSubtree(
         string $dimensionSpacePoint,
         string $entryNodeAggregateId,
@@ -225,18 +253,7 @@ class ContentRepositoryReadingElements
                     $dimensionSpacePoint = \json_decode(\urldecode($dimensionSpacePoint), true, 512, JSON_THROW_ON_ERROR);
                     $nodeTypeNames = $this->resolveSingleValue($nodeTypeNames);
                     $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
-
-                    $dimensions = [];
-                    foreach ($dimensionSpacePoint as $dimensionName => $dimensionValue) {
-                        $dimensions[$dimensionName] = $this->contentDimensionPresetSource->getAllPresets()[$dimensionName]['presets'][$dimensionValue]['values'];
-                    }
-
-                    $contentContext = $this->contentContextFactory->create([
-                        'workspaceName' => 'user-admin',
-                        'dimensions' => $dimensions,
-                        'targetDimensions' => $dimensionSpacePoint,
-                        'invisibleContentShown' => true,
-                    ]);
+                    $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
 
                     $entryNode = $contentContext->getNodeByIdentifier($entryNodeAggregateId);
                     if (!$entryNode instanceof Node) {

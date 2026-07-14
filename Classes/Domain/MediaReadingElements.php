@@ -6,18 +6,15 @@ namespace Sitegeist\SlopMachine\Domain;
 
 use Mcp\Capability\Attribute\McpResource;
 use Mcp\Capability\Attribute\McpResourceTemplate;
+use Mcp\Capability\Attribute\McpTool;
+use Mcp\Schema\ToolAnnotations;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Persistence\PersistenceManagerInterface;
 use Neos\Flow\ResourceManagement\ResourceManager;
 use Neos\Media\Domain\Model\Asset;
 use Neos\Media\Domain\Model\AssetCollection;
-use Neos\Media\Domain\Model\Audio;
-use Neos\Media\Domain\Model\Document;
-use Neos\Media\Domain\Model\Image;
 use Neos\Media\Domain\Model\Tag;
-use Neos\Media\Domain\Model\Video;
 use Neos\Media\Domain\Repository\AssetCollectionRepository;
-use Neos\Media\Domain\Repository\AssetRepository;
 use Neos\Media\Domain\Repository\AudioRepository;
 use Neos\Media\Domain\Repository\DocumentRepository;
 use Neos\Media\Domain\Repository\ImageRepository;
@@ -52,6 +49,17 @@ class MediaReadingElements
         name: 'find-asset-collections',
         description: 'A list of all available asset collections. Asset collections contain media assets like images, documents etc.',
     )]
+    /** Also exposed as an MCP search tool so that it can be used by chat clients */
+    #[McpTool(
+        name: 'find-asset-collections',
+        description: 'A list of all available asset collections. Asset collections contain media assets like images, documents etc.',
+        annotations: new ToolAnnotations(
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+        )
+    )]
     public function findAssetCollections(): array
     {
         $payload = [];
@@ -79,6 +87,17 @@ class MediaReadingElements
         uri: self::FIND_TAGS_URI,
         name: 'find-tags',
         description: 'A list of all available asset collections. Asset collections contain media assets like images, documents etc.',
+    )]
+    /** Also exposed as an MCP search tool so that it can be used by chat clients */
+    #[McpTool(
+        name: 'find-tags',
+        description: 'A list of all available asset collections. Asset collections contain media assets like images, documents etc.',
+        annotations: new ToolAnnotations(
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+        )
     )]
     public function findTags(): array
     {
@@ -108,6 +127,17 @@ class MediaReadingElements
         name: 'find-types',
         description: 'A list of all available media types.',
     )]
+    /** Also exposed as an MCP search tool so that it can be used by chat clients */
+    #[McpTool(
+        name: 'find-types',
+        description: 'A list of all available media types.',
+        annotations: new ToolAnnotations(
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+        )
+    )]
     public function findTypes(): array
     {
         $payload = [
@@ -133,6 +163,17 @@ class MediaReadingElements
         uriTemplate: self::FIND_ASSETS_URI,
         name: 'find-assets',
         description: 'A list of all available assets. Can be filtered by asset collection, tag or type. The asset collection and tag parameters are optional and can be set to * if to be ignored. Each parameter has its own resource to determine the available values.',
+    )]
+    /** Also exposed as an MCP search tool so that it can be used by chat clients */
+    #[McpTool(
+        name: 'find-assets',
+        description: 'A list of all available assets. Can be filtered by asset collection, tag or type. The asset collection and tag parameters are optional and can be set to * if to be ignored. Each parameter has its own resource to determine the available values.',
+        annotations: new ToolAnnotations(
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+        )
     )]
     public function findAssets(
         string $type,

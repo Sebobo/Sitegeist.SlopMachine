@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Sitegeist\SlopMachine\Domain;
 
 use Mcp\Capability\Attribute\McpResource;
+use Mcp\Capability\Attribute\McpTool;
+use Mcp\Schema\ToolAnnotations;
 use Neos\Flow\Annotations as Flow;
 
 #[Flow\Scope('singleton')]
@@ -22,6 +24,17 @@ class QueryPatternsResource
         meta: [
             'purpose' => 'query reliability',
         ],
+    )]
+    /** Also exposed as an MCP search tool so that it can be used by chat clients */
+    #[McpTool(
+        name: 'query-patterns',
+        description: 'Machine-readable guidance for reliable MCP content queries.',
+        annotations: new ToolAnnotations(
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+        )
     )]
     public function get(): array
     {
