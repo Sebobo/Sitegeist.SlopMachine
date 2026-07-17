@@ -21,8 +21,8 @@ use Neos\Media\Domain\Repository\ImageRepository;
 use Neos\Media\Domain\Repository\TagRepository;
 use Neos\Media\Domain\Repository\VideoRepository;
 
-#[Flow\Scope('singleton')]
-class MediaReadingElements
+#[Flow\Proxy(false)]
+class MediaReadingCapabilities
 {
     public const FIND_ASSET_COLLECTIONS_URI = 'media://find-assetcollections';
     public const FIND_TAGS_URI = 'media://find-tags';

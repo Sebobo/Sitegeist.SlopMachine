@@ -9,8 +9,8 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Schema\ToolAnnotations;
 use Neos\Flow\Annotations as Flow;
 
-#[Flow\Scope('singleton')]
-class QueryPatternsResource
+#[Flow\Proxy(false)]
+class QueryPatternsCapabilities
 {
     public const URI = 'guides://query-patterns';
 

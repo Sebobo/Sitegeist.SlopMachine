@@ -14,8 +14,8 @@ use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Property\PropertyMapper;
 use Neos\Flow\Security\Context as SecurityContext;
 
-#[Flow\Scope('singleton')]
-class ContentRepositoryWritingElements
+#[Flow\Proxy(false)]
+class ContentRepositoryWritingCapabilities
 {
     public function __construct(
         protected MCPContentContextFactory $contentContextFactory,

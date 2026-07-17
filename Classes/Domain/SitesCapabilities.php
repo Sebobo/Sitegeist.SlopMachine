@@ -13,8 +13,8 @@ use Neos\Flow\Security\Context;
 use Neos\Neos\Domain\Model\Site;
 use Neos\Neos\Domain\Repository\SiteRepository;
 
-#[Flow\Scope('singleton')]
-class SitesResource
+#[Flow\Proxy(false)]
+class SitesCapabilities
 {
     public const SITES_LIST_URI = 'sites://list/{dimensionSpacePoint}';
 

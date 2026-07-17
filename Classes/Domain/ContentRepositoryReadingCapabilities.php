@@ -14,8 +14,8 @@ use Neos\Flow\Security\Context;
 use Neos\Neos\Domain\Service\NodeSearchServiceInterface;
 use Neos\Utility\Arrays;
 
-#[Flow\Scope('singleton')]
-class ContentRepositoryReadingElements
+#[Flow\Proxy(false)]
+class ContentRepositoryReadingCapabilities
 {
     public const FIND_CHILDREN_URI = 'contentsubgraph://find-children/{dimensionSpacePoint}/{parentNodeAggregateId}/{nodeTypeNames}/{limitToPropertyNames}';
     public const FIND_DESCENDANTS_URI = 'contentsubgraph://find-descendants/{dimensionSpacePoint}/{ancestorNodeAggregateId}/{nodeTypeNames}/{searchTerm}/{limitToPropertyNames}';
@@ -90,7 +90,7 @@ class ContentRepositoryReadingElements
                     $result = [
                         'uri' => self::FIND_CHILDREN_URI,
                         'name' => 'Child nodes',
-                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaResource::FULL_URI . ' resource.',
+                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource.',
                         'mimeType' => 'application/json',
                         'text' => \json_encode($nodes),
                     ];
@@ -179,7 +179,7 @@ class ContentRepositoryReadingElements
                     $result = [
                         'uri' => self::FIND_DESCENDANTS_URI,
                         'name' => 'Descendant nodes',
-                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaResource::FULL_URI . ' resource.',
+                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource.',
                         'mimeType' => 'application/json',
                         'text' => \json_encode($payload),
                     ];

@@ -10,8 +10,8 @@ use Neos\ContentRepository\Domain\Service\ContentDimensionCombinator;
 use Neos\Flow\Annotations as Flow;
 use Mcp\Capability\Attribute\McpResource;
 
-#[Flow\Scope('singleton')]
-class DimensionSpaceResource
+#[Flow\Proxy(false)]
+class DimensionSpaceCapabilities
 {
     public function __construct(
         protected ContentDimensionCombinator $contentDimensionCombinator,

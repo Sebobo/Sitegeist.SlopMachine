@@ -11,8 +11,8 @@ use Neos\Flow\Annotations as Flow;
 use Mcp\Capability\Attribute\McpResource;
 use Neos\ContentRepository\Domain\Service\NodeTypeManager;
 
-#[Flow\Scope('singleton')]
-class NodeTypeSchemaResource
+#[Flow\Proxy(false)]
+class NodeTypeSchemaCapabilities
 {
     public const FULL_URI = 'nodetypes://full-schema';
     public const BASIC_URI = 'nodetypes://basic-schema';
