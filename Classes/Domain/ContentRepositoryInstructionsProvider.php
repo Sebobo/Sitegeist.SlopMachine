@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace Sitegeist\SlopMachine\Domain;
 
-use Neos\Flow\Annotations as Flow;
+use Sitegeist\Pandora\Instruction\InstructionsProvider;
 
-#[Flow\Proxy(false)]
-final readonly class ContentRepositoryInstructions
+final class ContentRepositoryInstructionsProvider implements InstructionsProvider
 {
-    public static function get(): string
+    public function getInstructions(): string
     {
         return 'Welcome to the Neos Content Repository. The content repository is a property graph structure consisting of nodes and relations.
             Nodes are arranged in a hierarchical tree structure.
