@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sitegeist\Pandora\Infrastructure;
+namespace Sitegeist\SlopMachine\Infrastructure;
 
 use Neos\Neos\Domain\Model\Domain;
 use Neos\Neos\Domain\Repository\DomainRepository;
