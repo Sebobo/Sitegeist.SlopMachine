@@ -8,9 +8,11 @@ use Mcp\Capability\Attribute\McpResourceTemplate;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Schema\ToolAnnotations;
 use Neos\ContentRepository\Domain\Model\Node;
+use Neos\ContentRepository\Domain\Repository\NodeDataRepository;
 use Neos\Eel\FlowQuery\FlowQuery;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Security\Context;
+use Neos\Neos\Domain\Service\ContentContext;
 use Neos\Neos\Domain\Service\NodeSearchServiceInterface;
 use Neos\Utility\Arrays;
 
@@ -25,6 +27,7 @@ class ContentRepositoryReadingCapabilities
         protected MCPContentContextFactory $contentContextFactory,
         protected Context $securityContext,
         protected NodeSearchServiceInterface $nodeSearchService,
+        protected NodeDataRepository $nodeDataRepository,
     ) {
     }
 
@@ -170,13 +173,28 @@ class ContentRepositoryReadingCapabilities
                     if ($searchTerm = $this->resolveSingleValue($searchTerm)) {
                         /** @var Node[] $nodes */
                         $nodes = $this->nodeSearchService->findByProperties($searchTerm, $nodeTypeNames, $contentContext);
+                    } elseif ($nodeTypeNames === []) {
+                        /**
+                         * "Any node type" cannot be expressed as a FlowQuery filter here: find()
+                         * returns early on an empty filter expression and therefore leaves the
+                         * context - the ancestor itself - as the result. The content repository
+                         * resolves a recursive lookup under a parent path with no node type
+                         * restriction, which is the query find() performs internally for a filter
+                         * like "[instanceof Neos.Neos:Document]".
+                         */
+                        $ancestorNode = $this->requireNode($contentContext, $ancestorNodeAggregateId);
+                        /** @var Node[] $nodes */
+                        $nodes = $this->nodeDataRepository->findByParentAndNodeTypeInContext(
+                            $ancestorNode->getPath(),
+                            null,
+                            $contentContext,
+                            true
+                        );
                     } else {
-                        $ancestorNode = $contentContext->getNodeByIdentifier($ancestorNodeAggregateId);
+                        $ancestorNode = $this->requireNode($contentContext, $ancestorNodeAggregateId);
                         $flowQuery = new FlowQuery([$ancestorNode]);
                         /** @var Node[] $nodes */
-                        $nodes = $nodeTypeNames
-                            ? $flowQuery->find($this->buildNodeTypeFilterExpression($nodeTypeNames))->get()
-                            : $flowQuery->find()->get();
+                        $nodes = $flowQuery->find($this->buildNodeTypeFilterExpression($nodeTypeNames))->get();
                     }
                     $payload = \array_map(
                         fn (Node $node): array => $this->serializeNode($node, $limitToPropertyNames),
@@ -293,6 +311,20 @@ class ContentRepositoryReadingCapabilities
         );
 
         return $result;
+    }
+
+    /**
+     * Resolves a node aggregate id, failing with a readable message instead of letting a null node
+     * reach the content repository.
+     */
+    private function requireNode(ContentContext $contentContext, string $nodeAggregateId): Node
+    {
+        $node = $contentContext->getNodeByIdentifier($nodeAggregateId);
+        if (!$node instanceof Node) {
+            throw new \RuntimeException('No node found for nodeAggregateId ' . $nodeAggregateId . '.');
+        }
+
+        return $node;
     }
 
     private function serializeNode(Node $node, ?array $limitToPropertyNames): array
