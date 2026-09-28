@@ -84,11 +84,13 @@ class NodeTypeSchemaCapabilities
         return [
             'uri' => self::FULL_URI,
             'name' => 'Node Type Schema',
-            'description' => 'The list of available node types.
+            'description' => 'The node types that are exposed to MCP, which is the set of node types you can address with the create and write tools.
+                A node type is included when it, or one of its super types, is marked with the mixin Sitegeist.SlopMachine:Mixin.MCPExposed. Node types outside that set are not listed and should not be used; if a node type you need is missing, say so instead of guessing a name.
                 The properties field defines all properties that can be set on a node of that type.
                 An exception are properties of type reference or references. Those can reference other nodes instead. Single reference properties can be set to the target node\'s aggregate id. Properties of type references can be set to a list of node aggregate ids. Use the SetNodeReferences tool for writing references.
-                The constraints field defines structural restrictions the node type imposes, e.g. what type children of a node of this type must be of.
-                The tetheredChildren field defines which child nodes are automatically created under a new node of this type.',
+                The required flag marks properties that carry a not-empty validation, which is a hint and not a guarantee that a value will be accepted.
+                The constraints field defines structural restrictions the node type imposes, e.g. what type children of a node of this type must be of. A create command that violates a constraint is rejected.
+                The tetheredChildren field defines which child nodes are automatically created under a new node of this type, and are addressed by their node name, not by an aggregate id.',
             'mimeType' => 'application/json',
             'text' => \json_encode($schema),
         ];

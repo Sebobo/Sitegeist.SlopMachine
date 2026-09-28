@@ -45,7 +45,7 @@ class QueryPatternsCapabilities
                 [
                     'id' => 'encode-dimension-space-point',
                     'requirement' => 'always',
-                    'message' => 'Dimension space point must be URL-encoded JSON.',
+                    'message' => 'Dimension space point must be URL-encoded JSON, and it must be a point this installation actually allows. Call the dimensionspace tool once before your first query and pass one of the points it reports; do not invent dimension names or values. If the installation defines no content dimensions, the only valid point is an empty object ({}).',
                 ],
                 [
                     'id' => 'prefer-children-over-descendants',
@@ -87,8 +87,13 @@ class QueryPatternsCapabilities
                 [
                     'parameter' => 'dimensionSpacePoint',
                     'format' => 'urlencoded-json-object',
+                    'description' => 'A dimension space point as reported by the dimensionspace tool, URL-encoded. The examples below are illustrations of the encoding only - they are not values this installation necessarily has.',
                     'exampleRaw' => '{"language":"de"}',
                     'exampleEncoded' => '%7B%22language%22%3A%22de%22%7D',
+                    'exampleWhenNoDimensions' => [
+                        'exampleRaw' => '{}',
+                        'exampleEncoded' => '%7B%7D',
+                    ],
                 ],
                 [
                     'parameter' => 'nodeTypeNames',

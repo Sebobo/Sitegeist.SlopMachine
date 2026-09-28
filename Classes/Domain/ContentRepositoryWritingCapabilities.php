@@ -13,6 +13,7 @@ use Neos\ContentRepository\Domain\Utility\NodePaths;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Property\PropertyMapper;
 use Neos\Flow\Security\Context as SecurityContext;
+use Neos\Neos\Domain\Service\ContentContext;
 
 #[Flow\Proxy(false)]
 class ContentRepositoryWritingCapabilities
@@ -134,7 +135,9 @@ class ContentRepositoryWritingCapabilities
             Use this if you want to e.g. create a completely new page and add its content in one batch.
             Commands must be sent as objects, not as JSON strings.
             Each command must define its `type` (CreateNodeAggregateWithNode, SetNodeProperties, SetNodeReferences) and has the same properties as the corresponding tools.
-            An example command would be {"type": "SetNodeProperties", "nodeAggregateId": "8a887309-5803-458d-b30a-40736f5a5d82", "originDimensionSpacePoint": {"language":"de"}, "propertyValues": {"title": "My Title"}}
+            The originDimensionSpacePoint of each command must be a dimension space point this installation allows; call the dimensionspace tool once to get the points you can use and pass the same one to every command of a batch. An empty object {} is the correct value for an installation without content dimensions.
+            An example command would be {"type": "SetNodeProperties", "nodeAggregateId": "8a887309-5803-458d-b30a-40736f5a5d82", "originDimensionSpacePoint": {}, "propertyValues": {"title": "My Title"}}
+            A command that names a node or parent that does not exist, or a node type that is not allowed there, is reported as failed with that reason; commands that already succeeded stay applied.
             The commands are unserialized along with the `commands` parameter and must not be double encoded.
             Returns a list of command results, one per issued command in correct order.
             This tool does not work transactionally, commands that succeeded have been applied and can be considered as much for the current content graph state.
@@ -231,7 +234,7 @@ class ContentRepositoryWritingCapabilities
                 &$result,
             ) {
                 try {
-                    $parentNode = $contentContext->getNodeByIdentifier($parentNodeAggregateId);
+                    $parentNode = $this->requireNode($contentContext, $parentNodeAggregateId);
                     /** @var Node $createdNode */
                     $createdNode = $parentNode->createNode(
                         $nodeName ?: NodePaths::generateRandomNodeName(),
@@ -250,7 +253,11 @@ class ContentRepositoryWritingCapabilities
                     }
                     $tetheredDescendantIds = [];
                     foreach ($nodeType->getAutoCreatedChildNodes() as $nodeName => $tetheredNodeType) {
-                        $tetheredDescendantIds[$nodeName] = $createdNode->getNode($nodeName)->getIdentifier();
+                        // The node has already been created at this point, so a tethered child that
+                        // cannot be resolved is reported as missing instead of failing the whole
+                        // command: reporting a failure would invite a retry that creates a duplicate.
+                        $tetheredNode = $createdNode->getNode($nodeName);
+                        $tetheredDescendantIds[$nodeName] = $tetheredNode?->getIdentifier();
                     }
 
                     $payload = [
@@ -299,13 +306,13 @@ class ContentRepositoryWritingCapabilities
                 &$result,
             ) {
                 try {
-                    /** @var Node $node */
-                    $node = $contentContext->getNodeByIdentifier($nodeAggregateId);
+                    $node = $this->requireNode($contentContext, $nodeAggregateId);
                     $this->setProperties($node, $propertyValues);
 
                     $result = [
                         'success' => true,
                         'message' => null,
+                        'nodeAggregateId' => $nodeAggregateId,
                     ];
                 } catch (\Throwable $exception) {
                     $result = [
@@ -339,13 +346,13 @@ class ContentRepositoryWritingCapabilities
                 &$result,
             ) {
                 try {
-                    /** @var Node $node */
-                    $node = $contentContext->getNodeByIdentifier($nodeAggregateId);
+                    $node = $this->requireNode($contentContext, $nodeAggregateId);
                     $this->setReferences($node, $references);
 
                     $result = [
                         'success' => true,
                         'message' => null,
+                        'nodeAggregateId' => $nodeAggregateId,
                     ];
                 } catch (\Throwable $exception) {
                     $result = [
@@ -362,6 +369,20 @@ class ContentRepositoryWritingCapabilities
     /**
      * @param array<string,mixed> $properties
      */
+    /**
+     * Resolves a node aggregate id, failing with a readable message rather than letting a null node
+     * reach the content repository and surface as a low level error.
+     */
+    private function requireNode(ContentContext $contentContext, string $nodeAggregateId): Node
+    {
+        $node = $contentContext->getNodeByIdentifier($nodeAggregateId);
+        if (!$node instanceof Node) {
+            throw new \RuntimeException('No node found for nodeAggregateId ' . $nodeAggregateId . '.');
+        }
+
+        return $node;
+    }
+
     private function setProperties(Node $node, array $properties): void
     {
         $nodeType = $node->getNodeType();
