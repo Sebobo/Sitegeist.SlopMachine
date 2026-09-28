@@ -36,6 +36,7 @@ class ContentRepositoryReadingCapabilities
         name: 'find-children',
         description: 'A list of all available child nodes of a given parent that are of a given type.
             This is a rather efficient query; use this if you already know the parent under which you want to search.
+            The nodeTypeNames parameter accepts a single node type or a comma separated list of node types, for example "Neos.Neos:Document,Neos.Neos:Content".
             To reduce response size, you can limit the returned properties to the list of given names in the parameter limitToPropertyNames.
             To skip a parameter, provide an asterisk (*) as value.
             The returned data describes the current state of the content graph and does not give any reliable information on structural constraints.',
@@ -48,6 +49,7 @@ class ContentRepositoryReadingCapabilities
         name: 'find-children',
         description: 'A list of all available child nodes of a given parent that are of a given type.
             This is a rather efficient query; use this if you already know the parent under which you want to search.
+            The nodeTypeNames parameter accepts a single node type or a comma separated list of node types, for example "Neos.Neos:Document,Neos.Neos:Content".
             To reduce response size, you can limit the returned properties to the list of given names in the parameter limitToPropertyNames.
             To skip a parameter, provide an asterisk (*) as value.
             The returned data describes the current state of the content graph and does not give any reliable information on structural constraints.',
@@ -75,14 +77,17 @@ class ContentRepositoryReadingCapabilities
             ) {
                 try {
                     $dimensionSpacePoint = \json_decode(\urldecode($dimensionSpacePoint), true, 512, JSON_THROW_ON_ERROR);
-                    $nodeTypeNames = $this->resolveSingleValue($nodeTypeNames);
+                    $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
                     $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
                     $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
 
                     $ancestorNode = $contentContext->getNodeByIdentifier($parentNodeAggregateId);
                     $flowQuery = new FlowQuery([$ancestorNode]);
+                    $nodeTypeFilterExpression = $nodeTypeNames === []
+                        ? ''
+                        : $this->buildNodeTypeFilterExpression($nodeTypeNames);
                     $nodes = [];
-                    foreach ($flowQuery->children('[instanceof ' . $nodeTypeNames . ']') as $node) {
+                    foreach ($flowQuery->children($nodeTypeFilterExpression) as $node) {
                         /** @var Node $node */
                         $nodes[] = $this->serializeNode($node, $limitToPropertyNames);
                     }
@@ -115,6 +120,7 @@ class ContentRepositoryReadingCapabilities
         name: 'find-descendants',
         description: 'A list of all available descendant nodes of a given ancestor that are of a given type and match an optional search term.
             This is a rather expensive query; use this if do not yet know the structure or the parent to search children of.
+            The nodeTypeNames parameter accepts a single node type or a comma separated list of node types, for example "Neos.Neos:Document,Neos.Neos:Content".
             To reduce response size, you can limit the returned properties to the list of given names in the parameter limitToPropertyNames.
             To skip a parameter, provide an asterisk (*) as value.
             The returned data describes the current state of the content graph and does not give any reliable information on structural constraints.',
@@ -127,6 +133,7 @@ class ContentRepositoryReadingCapabilities
         name: 'find-descendants',
         description: 'A list of all available descendant nodes of a given ancestor that are of a given type and match an optional search term.
             This is a rather expensive query; use this if do not yet know the structure or the parent to search children of.
+            The nodeTypeNames parameter accepts a single node type or a comma separated list of node types, for example "Neos.Neos:Document,Neos.Neos:Content".
             To reduce response size, you can limit the returned properties to the list of given names in the parameter limitToPropertyNames.
             To skip a parameter, provide an asterisk (*) as value.
             The returned data describes the current state of the content graph and does not give any reliable information on structural constraints.',
@@ -156,19 +163,19 @@ class ContentRepositoryReadingCapabilities
             ) {
                 try {
                     $dimensionSpacePoint = \json_decode(\urldecode($dimensionSpacePoint), true, 512, JSON_THROW_ON_ERROR);
-                    $nodeTypeNames = $this->resolveSingleValue($nodeTypeNames);
+                    $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
                     $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
                     $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
 
                     if ($searchTerm = $this->resolveSingleValue($searchTerm)) {
                         /** @var Node[] $nodes */
-                        $nodes = $this->nodeSearchService->findByProperties($searchTerm, $nodeTypeNames ? [$nodeTypeNames] : [], $contentContext);
+                        $nodes = $this->nodeSearchService->findByProperties($searchTerm, $nodeTypeNames, $contentContext);
                     } else {
                         $ancestorNode = $contentContext->getNodeByIdentifier($ancestorNodeAggregateId);
                         $flowQuery = new FlowQuery([$ancestorNode]);
                         /** @var Node[] $nodes */
                         $nodes = $nodeTypeNames
-                            ? $flowQuery->find('[instanceof ' . $nodeTypeNames . ']')->get()
+                            ? $flowQuery->find($this->buildNodeTypeFilterExpression($nodeTypeNames))->get()
                             : $flowQuery->find()->get();
                     }
                     $payload = \array_map(
@@ -251,7 +258,7 @@ class ContentRepositoryReadingCapabilities
             ) {
                 try {
                     $dimensionSpacePoint = \json_decode(\urldecode($dimensionSpacePoint), true, 512, JSON_THROW_ON_ERROR);
-                    $nodeTypeNames = $this->resolveSingleValue($nodeTypeNames);
+                    $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
                     $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
                     $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
 
@@ -262,7 +269,7 @@ class ContentRepositoryReadingCapabilities
 
                     $subtree = $this->collectMatchingSubtrees(
                         currentNode: $entryNode,
-                        nodeTypeNames: $nodeTypeNames,
+                        nodeTypeFilter: $nodeTypeNames === [] ? null : \implode(',', $nodeTypeNames),
                         limitToPropertyNames: $limitToPropertyNames,
                         level: 0,
                         maximumLevels: $maximumLevels,
@@ -310,18 +317,18 @@ class ContentRepositoryReadingCapabilities
      */
     private function collectMatchingSubtrees(
         Node $currentNode,
-        string $nodeTypeNames,
+        ?string $nodeTypeFilter,
         ?array $limitToPropertyNames,
         int $level,
         int $maximumLevels,
     ): array {
         $childSubtrees = [];
         if ($level <= $maximumLevels) {
-            foreach ($currentNode->getChildNodes($nodeTypeNames) as $childNode) {
+            foreach ($currentNode->getChildNodes($nodeTypeFilter) as $childNode) {
                 /** @var Node $childNode */
                 $childSubtrees[] = $this->collectMatchingSubtrees(
                     currentNode: $childNode,
-                    nodeTypeNames: $nodeTypeNames,
+                    nodeTypeFilter: $nodeTypeFilter,
                     limitToPropertyNames: $limitToPropertyNames,
                     level: $level + 1,
                     maximumLevels: $maximumLevels
@@ -363,5 +370,59 @@ class ContentRepositoryReadingCapabilities
         }
 
         return Arrays::trimExplode(',', $limitToPropertyNames);
+    }
+
+    /**
+     * Normalizes the nodeTypeNames query parameter into a list of single node type names.
+     *
+     * Accepts a single name ("Neos.Neos:Document"), a comma separated list
+     * ("Neos.Neos:Document,Neos.Neos:Content"), a JSON array ('["A","B"]') and
+     * tolerates surrounding whitespace. An asterisk (*) or an empty value means
+     * "any node type" and therefore resolves to an empty list.
+     *
+     * @return array<int,string>
+     */
+    private function resolveNodeTypeNames(?string $nodeTypeNames): array
+    {
+        $nodeTypeNames = $this->resolveSingleValue($nodeTypeNames);
+        if ($nodeTypeNames === null) {
+            return [];
+        }
+
+        $trimmedValue = \trim($nodeTypeNames);
+        if (\str_starts_with($trimmedValue, '[')) {
+            $jsonDecodedValue = \json_decode($trimmedValue, true);
+            if (\is_array($jsonDecodedValue)) {
+                $nodeTypeNames = \implode(',', \array_map('strval', $jsonDecodedValue));
+            }
+        }
+
+        $result = [];
+        foreach (Arrays::trimExplode(',', $nodeTypeNames) as $nodeTypeName) {
+            $nodeTypeName = \trim($nodeTypeName);
+            if ($nodeTypeName !== '' && !\in_array($nodeTypeName, $result, true)) {
+                $result[] = $nodeTypeName;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Builds a single FlowQuery filter expression matching any of the given node type names.
+     *
+     * All node types are combined into one comma separated filter group, for example
+     * "[instanceof Neos.Neos:Document],[instanceof Neos.Neos:Content]". The content
+     * repository resolves such a group into a single query instead of one query per
+     * node type.
+     *
+     * @param array<int,string> $nodeTypeNames
+     */
+    private function buildNodeTypeFilterExpression(array $nodeTypeNames): string
+    {
+        return '[' . \implode('],[', \array_map(
+            static fn (string $nodeTypeName): string => 'instanceof ' . $nodeTypeName,
+            $nodeTypeNames
+        )) . ']';
     }
 }
