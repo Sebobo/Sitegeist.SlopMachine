@@ -6,6 +6,59 @@ namespace Sitegeist\SlopMachine\Domain;
 
 final class SchemaLibrary
 {
+    /**
+     * A dimension space point, e.g. {"language":"de"}.
+     *
+     * The array branch of the type is what the MCP SDK hands the validator: the request body is
+     * decoded with json_decode(assoc: true), which maps an empty JSON object and an empty JSON
+     * array onto the very same empty PHP array, so "{}" - the correct value for an installation
+     * without content dimensions - arrives as "[]" and would be rejected by a plain
+     * "type: object". maxItems: 0 keeps it to that one case: a real list like ["de"] stays
+     * invalid, and so does a non-string value. additionalProperties only constrains the object
+     * branch and maxItems only the array one, so neither weakens the other.
+     *
+     * @var array<string,mixed>
+     */
+    public const DIMENSION_SPACE_POINT = [
+        'type' => ['object', 'array'],
+        'maxItems' => 0,
+        'additionalProperties' => ['type' => 'string'],
+    ];
+
+    /**
+     * A free-form string-keyed map of property name to value, e.g. {"title":"My title"}.
+     *
+     * Same array branch as {@see self::DIMENSION_SPACE_POINT}.
+     *
+     * @var array<string,mixed>
+     */
+    public const PROPERTY_VALUES = [
+        'type' => ['object', 'array'],
+        'maxItems' => 0,
+        'additionalProperties' => true,
+    ];
+
+    /**
+     * A map of reference name to a single node aggregate id or a list of them.
+     *
+     * Same array branch as {@see self::DIMENSION_SPACE_POINT}.
+     *
+     * @var array<string,mixed>
+     */
+    public const REFERENCES = [
+        'type' => ['object', 'array'],
+        'maxItems' => 0,
+        'additionalProperties' => [
+            'oneOf' => [
+                ['type' => 'string'],
+                [
+                    'type' => 'array',
+                    'items' => ['type' => 'string'],
+                ],
+            ],
+        ],
+    ];
+
     public const CREATE_NODEAGGREGATE_WITH_NODE_SCHEMA = [
         'type' => 'object',
         'description' => 'A single CreateNodeAggregateWithNode command. Creates a new node with the given parameters.
@@ -25,30 +78,13 @@ final class SchemaLibrary
                 'const' => 'CreateNodeAggregateWithNode',
             ],
             'nodeTypeName' => ['type' => 'string'],
-            'originDimensionSpacePoint' => [
-                'type' => 'object',
-                'additionalProperties' => ['type' => 'string'],
-            ],
+            'originDimensionSpacePoint' => self::DIMENSION_SPACE_POINT,
             'parentNodeAggregateId' => ['type' => 'string'],
-            'initialPropertyValues' => [
-                'type' => 'object',
-                'additionalProperties' => true,
-            ],
+            'initialPropertyValues' => self::PROPERTY_VALUES,
             'nodeAggregateId' => ['type' => 'string'],
             'succeedingSiblingNodeAggregateId' => ['type' => 'string'],
             'nodeName' => ['type' => 'string'],
-            'references' => [
-                'type' => 'object',
-                'additionalProperties' => [
-                    'oneOf' => [
-                        ['type' => 'string'],
-                        [
-                            'type' => 'array',
-                            'items' => ['type' => 'string'],
-                        ],
-                    ],
-                ],
-            ],
+            'references' => self::REFERENCES,
         ],
         'required' => [
             'type',
@@ -68,14 +104,8 @@ final class SchemaLibrary
                 'const' => 'SetNodeProperties',
             ],
             'nodeAggregateId' => ['type' => 'string'],
-            'originDimensionSpacePoint' => [
-                'type' => 'object',
-                'additionalProperties' => ['type' => 'string'],
-            ],
-            'propertyValues' => [
-                'type' => 'object',
-                'additionalProperties' => true,
-            ],
+            'originDimensionSpacePoint' => self::DIMENSION_SPACE_POINT,
+            'propertyValues' => self::PROPERTY_VALUES,
         ],
         'required' => [
             'type',
@@ -98,22 +128,8 @@ final class SchemaLibrary
                 'const' => 'SetNodeReferences',
             ],
             'nodeAggregateId' => ['type' => 'string'],
-            'originDimensionSpacePoint' => [
-                'type' => 'object',
-                'additionalProperties' => ['type' => 'string'],
-            ],
-            'references' => [
-                'type' => 'object',
-                'additionalProperties' => [
-                    'oneOf' => [
-                        ['type' => 'string'],
-                        [
-                            'type' => 'array',
-                            'items' => ['type' => 'string'],
-                        ],
-                    ],
-                ],
-            ],
+            'originDimensionSpacePoint' => self::DIMENSION_SPACE_POINT,
+            'references' => self::REFERENCES,
         ],
         'required' => [
             'type',
