@@ -1,0 +1,15 @@
+Sitegeist:
+  SlopMachine:
+    agent:
+      # The workspace the agent is allowed to hand its work over to. Humans review and publish it;
+      # the agent has no way of addressing the live workspace. Leave it unset to disable the
+      # shared workspace tools: SharedWorkspaceContextFactory then refuses every call.
+      #
+      # This is the workspace NAME, not its title - the content repository addresses workspaces by
+      # name, and Neos generates names like "ki-review-dca36" for a workspace titled "KI-Review".
+      # The name must not be the agent's own personal workspace, and the workspace must be based on
+      # live; SharedWorkspaceContextFactory refuses anything else.
+      #
+      # Override this per context in Configuration/<Context>/Settings.yaml, because the generated
+      # name differs per installation.
+      sharedWorkspace: ~

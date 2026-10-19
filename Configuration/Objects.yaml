@@ -1,0 +1,6 @@
+# Settings and other scalars cannot be injected into #[Flow\Proxy(false)] capability classes, so the
+# agent configuration is read by a regular Flow singleton which the capabilities depend on instead.
+Sitegeist\SlopMachine\Domain\SharedWorkspaceContextFactory:
+  arguments:
+    5:
+      setting: 'Sitegeist.SlopMachine.agent'
