@@ -266,6 +266,7 @@ class ContentRepositoryWritingCapabilities
                         'nodeName' => $createdNode->getName(),
                         'tetheredDescendantAggregateIds' => $tetheredDescendantIds,
                     ];
+                    $this->reportEffectivePropertyValues($createdNode, $initialPropertyValues, $payload);
 
                     $result = [
                         'content' => [
@@ -314,6 +315,7 @@ class ContentRepositoryWritingCapabilities
                         'message' => null,
                         'nodeAggregateId' => $nodeAggregateId,
                     ];
+                    $this->reportEffectivePropertyValues($node, $propertyValues, $result);
                 } catch (\Throwable $exception) {
                     $result = [
                         'success' => false,
@@ -396,6 +398,56 @@ class ContentRepositoryWritingCapabilities
             }
             $node->setProperty($propertyName, $propertyValue);
         }
+    }
+
+    /**
+     * Property values can be stored differently than requested: a node type or a Neos
+     * signal may adjust a value while it is being set, and values can be cast by the
+     * property mapper. The best known case is the uriPathSegment of a document, which
+     * Neos makes unique among its sibling documents - counting removed siblings as well -
+     * so a requested value can come back with a numeric suffix. It is not the only case,
+     * so the comparison is made for every scalar value.
+     *
+     * The message states the difference without naming a cause, because the caller cannot
+     * know one; the tool description names the known cases. The result array is only
+     * extended when a value actually differs, so responses stay unchanged in the regular
+     * case.
+     *
+     * @param array<string,mixed> $requestedValues
+     * @param array<string,mixed> $result the payload to extend, passed by reference
+     */
+    private function reportEffectivePropertyValues(Node $node, array $requestedValues, array &$result): void
+    {
+        $differences = [];
+        $effectiveValues = [];
+        foreach ($requestedValues as $propertyName => $requestedValue) {
+            $effectiveValue = $node->getProperty($propertyName);
+            // Assets, dates and other objects can neither be compared here nor serialised
+            // into the response, so only scalar values take part in the comparison.
+            if (!is_scalar($effectiveValue) && $effectiveValue !== null) {
+                continue;
+            }
+            if (!is_scalar($requestedValue) && $requestedValue !== null) {
+                continue;
+            }
+            $effectiveValues[$propertyName] = $effectiveValue;
+            if ($effectiveValue !== $requestedValue) {
+                $differences[] = sprintf(
+                    '%s: requested "%s", stored "%s"',
+                    $propertyName,
+                    $requestedValue,
+                    $effectiveValue
+                );
+            }
+        }
+
+        if ($differences === []) {
+            return;
+        }
+
+        $result['message'] = 'The node stored different values than requested: '
+            . implode('; ', $differences) . '.';
+        $result['effectivePropertyValues'] = $effectiveValues;
     }
 
     /**

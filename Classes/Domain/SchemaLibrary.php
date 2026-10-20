@@ -70,6 +70,7 @@ final class SchemaLibrary
             If the references property is set, it must not be empty. If no references are to be set, omit the property completely.
             Remember that tethered children don\'t need to be created explicitly as they are created automatically created together with their parent.
             Returns the nodeAggregateId and nodeName of the created node as well as the nodeAggregateIds of the tethered descendants that were created additionally.
+            Property values can be stored differently than requested, because a node type or a Neos signal may adjust a value while it is being set. The best known case is uriPathSegment, which Neos makes unique among the sibling documents of a node, counting removed siblings as well, so it can come back with a numeric suffix. When a value differs the response carries a message naming each difference and an effectivePropertyValues map of the values that were actually stored; success stays true, because the write did happen and a retry would create a duplicate.
             Example:
                 {"commands":[{"type":"CreateNodeAggregateWithNode","nodeTypeName":"Acme.Site:Document.WebPage","parentNodeAggregateId":"27ad5d9d-e8e9-4e91-aa16-e1e8719e2f37","originDimensionSpacePoint":{"language":"de"},"initialPropertyValues":{"title":"My title","uriPathSegment":"my-title"}}]}',
         'properties' => [
@@ -97,7 +98,8 @@ final class SchemaLibrary
 
     public const SET_NODE_PROPERTIES_SCHEMA = [
         'type' => 'object',
-        'description' => 'A single SetNodeProperties command. References must not be set with this, use SetNodeReferences instead.',
+        'description' => 'A single SetNodeProperties command. References must not be set with this, use SetNodeReferences instead.
+            Property values can be stored differently than requested, because a node type or a Neos signal may adjust a value while it is being set. The best known case is uriPathSegment, which Neos makes unique among the sibling documents of a node, counting removed siblings as well, so it can come back with a numeric suffix. When a value differs the response carries a message naming each difference and an effectivePropertyValues map of the values that were actually stored; success stays true, because the write did happen and a retry would create a duplicate.',
         'properties' => [
             'type' => [
                 'type' => 'string',
