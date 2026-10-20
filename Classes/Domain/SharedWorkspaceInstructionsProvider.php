@@ -48,22 +48,33 @@ final class SharedWorkspaceInstructionsProvider implements InstructionsProvider
 
         return 'You work in two workspaces, and the difference matters:
             ' . $workspaceDescription . ' All of your regular read and write tools (find-children, find-descendants,
-            find-subtree, BulkWriting, CreateNodeAggregateWithNode, SetNodeProperties, SetNodeReferences) only ever
-            address your own workspace. They cannot see the shared workspace, and they cannot address the live workspace.
+            find-subtree, BulkWriting, CreateNodeAggregateWithNode, SetNodeProperties, SetNodeReferences) address your
+            own workspace: they write into it, and what they read is your own workspace\'s view. They cannot address the
+            shared review workspace or the live workspace.
             The shared review workspace is "' . $sharedWorkspaceName . '". Humans review and publish it. You never
             address the live workspace, and no tool lets you publish anything.
-            - To write into the shared review workspace, use BulkWriteToSharedWorkspace. It takes the same commands as
-              BulkWriting, so nothing about the writing dialect changes. A node aggregate id that you created in your
-              own workspace does not exist in the shared workspace, so you can only attach new content below nodes
-              that are already published there.
-            - Because your own workspace is based on the shared one, what you write into the shared review workspace
-              is immediately visible in your own workspace under the same node aggregate ids. Create it once, in the
-              shared review workspace, not in both.
+            - Do the work in your own workspace first, and hand it over in finished packages. Write into
+              the shared review workspace when a coherent unit is really done - one finished page, say,
+              not every single node edit. Humans review what lands there, so a package should be
+              something they can judge as a whole.
+            - To hand a package over, use BulkWriteToSharedWorkspace. It takes the same commands as
+              BulkWriting, so nothing about the writing dialect changes: read your own workspace for the
+              values and issue the same commands against the shared workspace. It assigns its own node
+              aggregate ids - one you created in your own workspace does not exist there, so you can only
+              attach new content below nodes that are already published there.
+            - Do not rely on your own workspace to mirror the shared one. It only shows content of the shared
+              review workspace while its base workspace is that shared workspace, which ListUnpublishedChanges
+              reports as baseWorkspace. If it reports something else, shared writes are invisible to your own
+              read tools, so check the shared review workspace through its own read tools instead. Hand a
+              package over once, into the shared review workspace, and never write the same content into both.
             - To read the shared review workspace, use find-children-in-shared-workspace or
-              find-descendants-in-shared-workspace. Do this before you write, or you will create content that already
-              exists there.
+              find-descendants-in-shared-workspace. Check it before you hand a package over, or you will
+              create content that already exists there. Compare titles as well as uriPathSegment values:
+              a node whose requested uriPathSegment was taken by a sibling is stored with a numeric
+              suffix and is easy to miss when you filter for the exact value.
             - To remove content from the shared review workspace, use RemoveFromSharedWorkspace. That is a permanent
-              deletion in a workspace humans work in, so read it first and remove the smallest possible node.
+              deletion in a workspace humans work in, so read it first and remove the smallest possible node. There is
+              no undo for it, which is another reason to hand over only finished packages.
             - To remove content from your own workspace, use RemoveNode. That is also a permanent deletion; use it for
               content you created yourself that must not end up in the review workspace.
             - Both removal tools only accept nodes that belong to the workspace they address. A node you did not
