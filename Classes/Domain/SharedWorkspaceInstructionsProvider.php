@@ -72,6 +72,13 @@ final class SharedWorkspaceInstructionsProvider implements InstructionsProvider
               create content that already exists there. Compare titles as well as uriPathSegment values:
               a node whose requested uriPathSegment was taken by a sibling is stored with a numeric
               suffix and is easy to miss when you filter for the exact value.
+            - If you already handed something over and noticed a mistake afterwards, do not try to revert:
+              write the corrected content into your own workspace first, then hand it over again.
+              BulkWriteToSharedWorkspace accepts the same Create/Set/Bulk commands for the same node
+              aggregate ids and overwrites the offending values; the audit trail in the shared
+              workspace carries both the wrong write and the corrected one. Use
+              RemoveFromSharedWorkspace only when the node itself has to disappear (a duplicate
+              that should never have existed, an entirely wrong node), not as a general undo.
             - To remove content from the shared review workspace, use RemoveFromSharedWorkspace. That is a permanent
               deletion in a workspace humans work in, so read it first and remove the smallest possible node. There is
               no undo for it, which is another reason to hand over only finished packages.
