@@ -281,8 +281,10 @@ class SharedWorkspaceWritingCapabilities
 
                     $tetheredDescendantIds = [];
                     foreach ($nodeType->getAutoCreatedChildNodes() as $autoCreatedNodeName => $autoCreatedNodeType) {
-                        $tetheredDescendantIds[$autoCreatedNodeName] = $createdNode->getNode($autoCreatedNodeName)
-                            ->getIdentifier();
+                        $tetheredChildNode = $createdNode->getNode($autoCreatedNodeName);
+                        if ($tetheredChildNode !== null) {
+                            $tetheredDescendantIds[$autoCreatedNodeName] = $tetheredChildNode->getIdentifier();
+                        }
                     }
 
                     $result = [
@@ -373,7 +375,6 @@ class SharedWorkspaceWritingCapabilities
                         'message' => null,
                         'nodeAggregateId' => $nodeAggregateId,
                     ];
-                    $this->reportEffectivePropertyValues($node, $propertyValues, $result);
                 } catch (\Throwable $exception) {
                     $result = [
                         'success' => false,

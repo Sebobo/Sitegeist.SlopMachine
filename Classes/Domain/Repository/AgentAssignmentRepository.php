@@ -9,9 +9,6 @@ use Neos\Flow\Persistence\Doctrine\Repository;
 use Neos\Flow\Security\Context;
 use Sitegeist\SlopMachine\Domain\Model\AgentAssignment;
 
-/**
- * @method findOneByAgentId(string $agentId): ?AgentAssignment
- */
 #[Flow\Scope('singleton')]
 class AgentAssignmentRepository extends Repository
 {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sitegeist\SlopMachine\Domain;
 
 use Mcp\Capability\Attribute\McpTool;
+use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\ToolAnnotations;
 use Neos\ContentRepository\Domain\Model\Node;
 use Neos\ContentRepository\Domain\Repository\NodeDataRepository;
@@ -31,6 +32,7 @@ class ContentRepositoryReadingCapabilities
     }
 
     /**
+     * @param string|array<string,string> $dimensionSpacePoint
      * @return array<string,mixed>
      */
     #[McpTool(
@@ -52,10 +54,10 @@ class ContentRepositoryReadingCapabilities
     )]
     #[Schema(properties: McpSchemaLibrary::DIMENSION_SPACE_POINT_TOOL_SCHEMA['properties'])]
     public function findChildren(
-        string|array $dimensionSpacePoint = [],
         string $parentNodeAggregateId,
         string $nodeTypeNames,
         string $limitToPropertyNames,
+        string|array $dimensionSpacePoint = [],
     ): array {
         $result = [];
         $this->securityContext->withoutAuthorizationChecks(
@@ -85,7 +87,7 @@ class ContentRepositoryReadingCapabilities
                      */
                     $foundNodes = $this->nodeDataRepository->findByParentAndNodeTypeInContext(
                         $ancestorNode->getPath(),
-                        $nodeTypeNames === [] ? null : \implode(',', $nodeTypeNames),
+                        $nodeTypeNames === [] ? '' : \implode(',', $nodeTypeNames),
                         $contentContext,
                         false
                     );
@@ -116,6 +118,7 @@ class ContentRepositoryReadingCapabilities
     }
 
     /**
+     * @param string|array<string,string> $dimensionSpacePoint
      * @return array<string,mixed>
      */
     #[McpTool(
@@ -139,11 +142,11 @@ class ContentRepositoryReadingCapabilities
     )]
     #[Schema(properties: McpSchemaLibrary::DIMENSION_SPACE_POINT_TOOL_SCHEMA['properties'])]
     public function findDescendants(
-        string|array $dimensionSpacePoint = [],
         string $ancestorNodeAggregateId,
         string $nodeTypeNames,
         string $searchTerm,
         string $limitToPropertyNames,
+        string|array $dimensionSpacePoint = [],
     ): array {
         $result = [];
         $this->securityContext->withoutAuthorizationChecks(
@@ -177,7 +180,7 @@ class ContentRepositoryReadingCapabilities
                         /** @var Node[] $nodes */
                         $nodes = $this->nodeDataRepository->findByParentAndNodeTypeInContext(
                             $ancestorNode->getPath(),
-                            null,
+                            '',
                             $contentContext,
                             true
                         );
@@ -213,6 +216,7 @@ class ContentRepositoryReadingCapabilities
     }
 
     /**
+     * @param string|array<string,string> $dimensionSpacePoint
      * @return array<string,mixed>
      */
     #[McpTool(
@@ -236,11 +240,11 @@ class ContentRepositoryReadingCapabilities
     )]
     #[Schema(properties: McpSchemaLibrary::DIMENSION_SPACE_POINT_TOOL_SCHEMA['properties'])]
     public function findSubtree(
-        string|array $dimensionSpacePoint = [],
         string $entryNodeAggregateId,
         string $nodeTypeNames,
         int $maximumLevels,
         string $limitToPropertyNames,
+        string|array $dimensionSpacePoint = [],
     ): array {
         $result = [];
         $this->securityContext->withoutAuthorizationChecks(
@@ -305,6 +309,10 @@ class ContentRepositoryReadingCapabilities
         return $node;
     }
 
+    /**
+     * @param ?array<int,string> $limitToPropertyNames
+     * @return array<string,mixed>
+     */
     private function serializeNode(Node $node, ?array $limitToPropertyNames): array
     {
         return [
@@ -323,6 +331,11 @@ class ContentRepositoryReadingCapabilities
     }
 
     /**
+     * @param Node $currentNode
+     * @param ?string $nodeTypeFilter
+     * @param ?array<int,string> $limitToPropertyNames
+     * @param int $level
+     * @param int $maximumLevels
      * @return array{level: int, node: array<string,mixed>, children: array<int,array<string,mixed>>}
      */
     private function collectMatchingSubtrees(
@@ -367,6 +380,9 @@ class ContentRepositoryReadingCapabilities
         return $value;
     }
 
+    /**
+     * @return ?array<int,string>
+     */
     private function resolveListValue(string $limitToPropertyNames): ?array
     {
         $limitToPropertyNames = \urldecode($limitToPropertyNames);

@@ -128,6 +128,7 @@ class ContentRepositoryWritingCapabilities
 
     /**
      * @param array<int,array<string,mixed>> $commands
+     * @return array<int,array<string,mixed>>
      */
     #[McpTool(
         name: 'BulkWriting',
@@ -385,6 +386,9 @@ class ContentRepositoryWritingCapabilities
         return $node;
     }
 
+    /**
+     * @param array<string,mixed> $properties
+     */
     private function setProperties(Node $node, array $properties): void
     {
         $nodeType = $node->getNodeType();

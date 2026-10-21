@@ -8,6 +8,7 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\ToolAnnotations;
 use Neos\ContentRepository\Domain\Model\Node;
+use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Neos\ContentRepository\Domain\Repository\NodeDataRepository;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Security\Context as SecurityContext;
@@ -74,9 +75,12 @@ class SharedWorkspaceReadingCapabilities
         return $this->read(
             function ($contentContext) use ($parentNodeAggregateId, $nodeTypeNames, $limitToPropertyNames, $limit): array {
                 $parentNode = $contentContext->getNodeByIdentifier($parentNodeAggregateId);
+                if (!$parentNode instanceof Node) {
+                    throw new \RuntimeException(\sprintf('No node found for nodeAggregateId %s.', $parentNodeAggregateId));
+                }
                 $nodes = $this->nodeDataRepository->findByParentAndNodeTypeInContext(
                     $parentNode->getPath(),
-                    $this->buildNodeTypeFilter($nodeTypeNames),
+                    $this->buildNodeTypeFilter($nodeTypeNames) ?? '',
                     $contentContext,
                     false
                 );
@@ -129,9 +133,12 @@ class SharedWorkspaceReadingCapabilities
         return $this->read(
             function ($contentContext) use ($ancestorNodeAggregateId, $nodeTypeNames, $limitToPropertyNames, $limit): array {
                 $ancestorNode = $contentContext->getNodeByIdentifier($ancestorNodeAggregateId);
+                if (!$ancestorNode instanceof Node) {
+                    throw new \RuntimeException(\sprintf('No node found for nodeAggregateId %s.', $ancestorNodeAggregateId));
+                }
                 $nodes = $this->nodeDataRepository->findByParentAndNodeTypeInContext(
                     $ancestorNode->getPath(),
-                    $this->buildNodeTypeFilter($nodeTypeNames),
+                    $this->buildNodeTypeFilter($nodeTypeNames) ?? '',
                     $contentContext,
                     true
                 );
@@ -185,6 +192,12 @@ class SharedWorkspaceReadingCapabilities
      * @param iterable<Node> $nodes
      * @return array<string,mixed>
      */
+    /**
+     * @param iterable<NodeInterface> $nodes
+     * @param string $limitToPropertyNames
+     * @param int $limit
+     * @return array{returnedCount: int, truncated: bool, nodes: array<int,array<string,mixed>>}
+     */
     private function serializeNodes(iterable $nodes, string $limitToPropertyNames, int $limit): array
     {
         $result = [];
@@ -192,6 +205,9 @@ class SharedWorkspaceReadingCapabilities
         $truncated = false;
 
         foreach ($nodes as $node) {
+            if (!$node instanceof Node) {
+                continue;
+            }
             if (\count($result) >= $limit) {
                 $truncated = true;
                 break;

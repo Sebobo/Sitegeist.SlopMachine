@@ -28,6 +28,7 @@ class SitesCapabilities
     }
 
     /**
+     * @param string|array<string,string> $dimensionSpacePoint
      * @return array<string,mixed>
      */
     #[McpTool(
@@ -76,6 +77,8 @@ class SitesCapabilities
     }
 
     /**
+     * @param string|array<string,string> $dimensionSpacePoint
+     * @param ?string $siteNodeName
      * @return array<string,mixed>
      */
     #[McpTool(
@@ -215,6 +218,7 @@ class SitesCapabilities
      * success/message shape the other capabilities use instead of surfacing as an opaque error of
      * the tool call.
      *
+     * @param string|array<string,string> $dimensionSpacePoint
      * @param callable(ContentContext):void $reader
      * @return array<string,mixed>|null The failure payload, or null when the reader ran
      */

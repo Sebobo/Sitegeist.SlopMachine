@@ -8,6 +8,7 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\ToolAnnotations;
 use Neos\ContentRepository\Domain\Model\Node;
+use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Neos\ContentRepository\Domain\Model\NodeData;
 use Neos\ContentRepository\Domain\Model\Workspace;
 use Neos\ContentRepository\Domain\Repository\NodeDataRepository;
@@ -169,6 +170,9 @@ class AgentWorkspaceCapabilities
                     if (\count($changes) >= $limit) {
                         break;
                     }
+                    if (!$node instanceof Node) {
+                        continue;
+                    }
                     $changes[] = $this->describeChange($node, $baseWorkspace);
                 }
             }
@@ -316,7 +320,7 @@ class AgentWorkspaceCapabilities
             'nodeTypeName' => $node->getNodeTypeName(),
             'path' => $node->getPath(),
             'change' => $changeType,
-            'lastModificationDateTime' => $lastModificationDateTime?->format(\DateTimeInterface::ATOM),
+            'lastModificationDateTime' => $lastModificationDateTime->format(\DateTimeInterface::ATOM),
         ];
     }
 }
