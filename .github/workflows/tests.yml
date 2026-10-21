@@ -36,7 +36,4 @@ jobs:
           version: 2
 
       - name: PHPStan
-        uses: php-actions/phpstan@v3
-        with:
-          php_version: ${{ matrix.php-versions }}
-          configuration: phpstan.ci.neon
+        run: vendor/bin/phpstan analyse -c phpstan.neon
