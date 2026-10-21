@@ -85,6 +85,7 @@ class SitesCapabilities
             Turn a node path into a URL by dropping the /sites/<siteNodeName> prefix and appending the rest to the domain URL: for the site "alwe" with the node path /sites/alwe/impressum the URL is https://<primary domain URL>/impressum.
             Prefer the primary domain. The other domains of a site are aliases, staging hosts or hostnames that are not routed in production.
             enabled is false when the site is taken offline, and a domain with active false is not routed at all, so such a site cannot be opened in a browser.
+            Use the reachable flag instead of enabled when the question is whether a site is actually openable today: reachable is true only when the site is enabled AND at least one of its domains is active - enabled alone can be true for a site whose domains list is empty (the alwetest / aok-partner-neos case the workspace module review kept hitting by hand).
             These URLs serve the published content. Writes you make land in a workspace that is not published, so opening a URL shows what is live, not what you just changed. Use this to check published content, never to verify your own writes.
             Pass siteNodeName to get a single site instead of all of them.
             The dimensionSpacePoint parameter accepts either an object (the shape the dimensionspace tool returns) or a URL-encoded JSON string; both forms are equivalent.
@@ -169,12 +170,22 @@ class SitesCapabilities
             ];
         }
 
+        $hasActiveDomain = false;
+        foreach ($site->getDomains() as $domain) {
+            if ($domain->getActive()) {
+                $hasActiveDomain = true;
+                break;
+            }
+        }
+        $reachable = $site->isOnline() && $hasActiveDomain;
+
         return [
             'name' => $site->getName(),
             'nodeName' => $site->getNodeName(),
             'nodeAggregateId' => $nodeAggregateId,
             'enabled' => $site->isOnline(),
             'state' => $site->isOnline() ? 'online' : 'offline',
+            'reachable' => $reachable,
             'primaryDomainUrl' => $primaryDomain instanceof Domain ? $this->buildUrl($primaryDomain) : null,
             'domains' => $domains,
         ];
