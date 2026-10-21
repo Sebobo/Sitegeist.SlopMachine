@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Sitegeist\SlopMachine\Domain;
 
-use Mcp\Capability\Attribute\McpResourceTemplate;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\ToolAnnotations;
@@ -31,12 +30,6 @@ class SitesCapabilities
     /**
      * @return array<string,mixed>
      */
-    #[McpResourceTemplate(
-        uriTemplate: self::SITES_LIST_URI,
-        name: 'list-sites',
-        description: 'A list of all available sites.',
-    )]
-    /** Also exposed as an MCP search tool so that it can be used by chat clients */
     #[McpTool(
         name: 'search-sites',
         description: 'Search available Neos sites and return search results with IDs that can be used for subsequent operations.
@@ -88,12 +81,6 @@ class SitesCapabilities
     /**
      * @return array<string,mixed>
      */
-    #[McpResourceTemplate(
-        uriTemplate: self::SITE_URLS_URI,
-        name: 'list-site-urls',
-        description: 'The sites of this installation with their enabled status, their domains and the primary domain of each site, including the absolute URL to open a site under.',
-    )]
-    /** Also exposed as an MCP search tool so that it can be used by chat clients */
     #[McpTool(
         name: 'list-site-urls',
         description: 'A list of the sites of this installation, each with the node aggregate id of its root node, whether it is enabled, all of its domains with the absolute URL of every domain, and which domain is the primary one.

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Sitegeist\SlopMachine\Domain;
 
-use Mcp\Capability\Attribute\McpResource;
-use Mcp\Capability\Attribute\McpResourceTemplate;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Schema\ToolAnnotations;
 use Neos\Flow\Annotations as Flow;
@@ -44,12 +42,6 @@ class MediaReadingCapabilities
     /**
      * @return array<string,mixed>
      */
-    #[McpResource(
-        uri: self::FIND_ASSET_COLLECTIONS_URI,
-        name: 'find-asset-collections',
-        description: 'A list of all available asset collections. Asset collections contain media assets like images, documents etc.',
-    )]
-    /** Also exposed as an MCP search tool so that it can be used by chat clients */
     #[McpTool(
         name: 'find-asset-collections',
         description: 'A list of all available asset collections. Asset collections contain media assets like images, documents etc.',
@@ -83,12 +75,6 @@ class MediaReadingCapabilities
     /**
      * @return array<string,mixed>
      */
-    #[McpResource(
-        uri: self::FIND_TAGS_URI,
-        name: 'find-tags',
-        description: 'A list of all available asset collections. Asset collections contain media assets like images, documents etc.',
-    )]
-    /** Also exposed as an MCP search tool so that it can be used by chat clients */
     #[McpTool(
         name: 'find-tags',
         description: 'A list of all available asset collections. Asset collections contain media assets like images, documents etc.',
@@ -122,12 +108,6 @@ class MediaReadingCapabilities
     /**
      * @return array<string,mixed>
      */
-    #[McpResource(
-        uri: self::FIND_TYPES_URI,
-        name: 'find-types',
-        description: 'A list of all available media types.',
-    )]
-    /** Also exposed as an MCP search tool so that it can be used by chat clients */
     #[McpTool(
         name: 'find-types',
         description: 'A list of all available media types.',
@@ -159,12 +139,6 @@ class MediaReadingCapabilities
     /**
      * @return array<string,mixed>
      */
-    #[McpResourceTemplate(
-        uriTemplate: self::FIND_ASSETS_URI,
-        name: 'find-assets',
-        description: 'A list of all available assets. Can be filtered by asset collection, tag or type. The asset collection and tag parameters are optional and can be set to * if to be ignored. Each parameter has its own resource to determine the available values.',
-    )]
-    /** Also exposed as an MCP search tool so that it can be used by chat clients */
     #[McpTool(
         name: 'find-assets',
         description: 'A list of all available assets. Can be filtered by asset collection, tag or type. The asset collection and tag parameters are optional and can be set to * if to be ignored. Each parameter has its own resource to determine the available values.',

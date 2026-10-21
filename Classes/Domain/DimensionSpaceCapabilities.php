@@ -8,7 +8,6 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Schema\ToolAnnotations;
 use Neos\ContentRepository\Domain\Service\ContentDimensionCombinator;
 use Neos\Flow\Annotations as Flow;
-use Mcp\Capability\Attribute\McpResource;
 
 #[Flow\Proxy(false)]
 class DimensionSpaceCapabilities
@@ -21,12 +20,6 @@ class DimensionSpaceCapabilities
     /**
      * @return array<string,mixed>
      */
-    #[McpResource(
-        uri: 'dimensionspace://show',
-        name: 'dimensionspace',
-        description: 'A list of all dimension space points that this installation allows, as objects. Content can be varied in across multiple dimensions. Each allowed combination of values of such dimensions is called a dimension space point. Call this once before your first query: it is the only authoritative list, and the other tools expect one of the points it reports, URL-encoded. If this installation defines no content dimensions, the list is a single empty object, {}.',
-    )]
-    /** Also exposed as an MCP search tool so that it can be used by chat clients */
     #[McpTool(
         name: 'dimensionspace',
         description: 'A list of all dimension space points that this installation allows, as objects. Content can be varied in across multiple dimensions. Each allowed combination of values of such dimensions is called a dimension space point. Call this once before your first query: it is the only authoritative list, and the other tools expect one of the points it reports, URL-encoded. If this installation defines no content dimensions, the list is a single empty object, {}.',

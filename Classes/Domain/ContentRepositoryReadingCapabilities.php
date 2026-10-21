@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Sitegeist\SlopMachine\Domain;
 
-use Mcp\Capability\Attribute\McpResourceTemplate;
 use Mcp\Capability\Attribute\McpTool;
 use Mcp\Schema\ToolAnnotations;
 use Neos\ContentRepository\Domain\Model\Node;
@@ -34,22 +33,6 @@ class ContentRepositoryReadingCapabilities
     /**
      * @return array<string,mixed>
      */
-    #[McpResourceTemplate(
-        uriTemplate: self::FIND_CHILDREN_URI,
-        name: 'find-children',
-        description: 'A list of all available child nodes of a given parent that are of a given type.
-            This is a rather efficient query; use this if you already know the parent under which you want to search.
-            The nodeTypeNames parameter accepts a single node type or a comma separated list of node types, for example "Neos.Neos:Document,Neos.Neos:Content". A node type also matches everything that extends it, so "Neos.Neos:Document" returns pages and other document types as well. Listing a type together with one of its super types returns every matching node exactly once, never twice.
-            Call the dimensionspace tool to obtain a dimension space point that this installation allows and pass it URL-encoded; do not invent dimension names or values.
-            To reduce response size, you can limit the returned properties to the list of given names in the parameter limitToPropertyNames.
-            To skip a parameter, provide an asterisk (*) as value.
-            The result is a list in which every node appears once, containing the direct children of the given node only, not the whole subtree.
-            The returned data describes the current state of the content graph and does not give any reliable information on structural constraints.',
-        meta: [
-            'purpose' => 'content search'
-        ],
-    )]
-    /** Also exposed as an MCP search tool so that it can be used by chat clients */
     #[McpTool(
         name: 'find-children',
         description: 'A list of all available child nodes of a given parent that are of a given type.
@@ -134,24 +117,6 @@ class ContentRepositoryReadingCapabilities
     /**
      * @return array<string,mixed>
      */
-    #[McpResourceTemplate(
-        uriTemplate: self::FIND_DESCENDANTS_URI,
-        name: 'find-descendants',
-        description: 'A list of all available descendant nodes of a given ancestor that are of a given type and match an optional search term.
-            This is a rather expensive query; use this if do not yet know the structure or the parent to search children of.
-            The nodeTypeNames parameter accepts a single node type or a comma separated list of node types, for example "Neos.Neos:Document,Neos.Neos:Content". A node type also matches everything that extends it, and listing a type together with one of its super types still returns every matching node exactly once.
-            Without a search term the result is a list with the whole subtree below the given node - the given node itself is not part of it - in which every node appears once. With a search term the result is an object keyed by node path instead, because a search term is not restricted to the subtree; check which of the two shapes you got before parsing it.
-            A search term is matched against node properties across the workspace, so it can return nodes outside the subtree. Pass an asterisk (*) to walk the subtree structurally instead.
-            The result is not capped: a broad nodeTypeNames filter combined with all properties can return a very large list. Prefer find-children or find-subtree when the parent is known, and pass a limitToPropertyNames list to keep the response small.
-            Call the dimensionspace tool to obtain a dimension space point that this installation allows and pass it URL-encoded; do not invent dimension names or values.
-            To reduce response size, you can limit the returned properties to the list of given names in the parameter limitToPropertyNames.
-            To skip a parameter, provide an asterisk (*) as value.
-            The returned data describes the current state of the content graph and does not give any reliable information on structural constraints.',
-        meta: [
-            'purpose' => 'content search'
-        ],
-    )]
-    /** Also exposed as an MCP search tool so that it can be used by chat clients */
     #[McpTool(
         name: 'find-descendants',
         description: 'A list of all available descendant nodes of a given ancestor that are of a given type and match an optional search term.
@@ -248,24 +213,6 @@ class ContentRepositoryReadingCapabilities
     /**
      * @return array<string,mixed>
      */
-    #[McpResourceTemplate(
-        uriTemplate: self::FIND_SUBTREE_URI,
-        name: 'find-subtree',
-        description: 'A hierarchical subtree for a single page only.
-            Includes only nodes matching the given base node type.
-            Explicitly excludes nodes under descendant document nodes (subpages).
-            PRIMARY QUERY for editorial single-page content inspection when a page nodeAggregateId is known.
-            To fetch all content from a document, set the node type names to `Neos.Neos:ContentCollection,Neos.Neos:Content`.
-            Use find-descendants only as fallback when the page root is unknown or a cross-page search is explicitly required.
-            maximumLevels bounds how deep the hierarchy is walked and costs one query per visited node, so keep it as small as the task allows.
-            Call the dimensionspace tool to obtain a dimension space point that this installation allows and pass it URL-encoded; do not invent dimension names or values.
-            To reduce response size, you can limit the returned properties to the list of given names in the parameter limitToPropertyNames.
-            To skip a parameter, provide an asterisk (*) as value.',
-        meta: [
-            'purpose' => 'content search'
-        ],
-    )]
-    /** Also exposed as an MCP search tool so that it can be used by chat clients */
     #[McpTool(
         name: 'find-subtree',
         description: 'A hierarchical subtree for a single page only.

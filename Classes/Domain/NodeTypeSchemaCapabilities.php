@@ -8,7 +8,6 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Schema\ToolAnnotations;
 use Neos\ContentRepository\Domain\Model\NodeType;
 use Neos\Flow\Annotations as Flow;
-use Mcp\Capability\Attribute\McpResource;
 use Neos\ContentRepository\Domain\Service\NodeTypeManager;
 
 #[Flow\Proxy(false)]
@@ -25,20 +24,6 @@ class NodeTypeSchemaCapabilities
     /**
      * @return array<string,mixed>
      */
-    #[McpResource(
-        uri: self::FULL_URI,
-        name: 'nodetype-full-schema',
-        description: 'A list of available node types that can be handled by MCP clients. Results in a rather large set of data. To fetch only basic information, use `nodetype-basic-schema` instead.
-            This contains all necessary structural data like
-              - which node type has what properties of what type
-              - which constraints regarding properties or allowed child nodes exist
-              - which tethered nodes exist per node type.
-            Constraints are enforced on the write side and use the node type schema for this, so this is the single source of truth for all schema validation information.',
-        meta: [
-            'purpose' => 'structure information'
-        ],
-    )]
-    /** Also exposed as an MCP search tool so that it can be used by chat clients */
     #[McpTool(
         name: 'nodetype-full-schema',
         description: 'A list of available node types that can be handled by MCP clients. Results in a rather large set of data. To fetch only basic information, use `nodetype-basic-schema` instead.
@@ -99,19 +84,6 @@ class NodeTypeSchemaCapabilities
     /**
      * @return array<string,mixed>
      */
-    #[McpResource(
-        uri: self::BASIC_URI,
-        name: 'nodetype-basic-schema',
-        description: 'A list of available node types reduced to basic information.  Results in a rather small set of incomplete data. To fetch full information, use `nodetype-full-schema` instead.
-            This contains basic structural data like
-              - which node type has what properties of what type
-              - which tethered nodes exist per node type.
-            Constraints and additional property information are excluded from this limited overview.',
-        meta: [
-            'purpose' => 'basic node type information'
-        ],
-    )]
-    /** Also exposed as an MCP search tool so that it can be used by chat clients */
     #[McpTool(
         name: 'nodetype-basic-schema',
         description: 'A list of available node types reduced to basic information.  Results in a rather small set of incomplete data. To fetch full information, use `nodetype-full-schema` instead.
