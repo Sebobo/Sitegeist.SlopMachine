@@ -25,6 +25,24 @@ class MCPContentContextFactory
 
 
     /**
+     * Decodes a dimension space point that may arrive as either an object (the shape the
+     * factory expects internally) or a URL-encoded JSON string (the form read and site tools
+     * historically accepted). An empty object {} arrives as an empty PHP array after JSON
+     * decoding, so callers do not have to distinguish empty-object from empty-array input.
+     *
+     * @param string|array<string,string> $dimensionSpacePoint
+     * @return array<string,string>
+     */
+    public static function decodeDimensionSpacePoint(string|array $dimensionSpacePoint): array
+    {
+        if (\is_string($dimensionSpacePoint)) {
+            $decoded = \json_decode(\urldecode($dimensionSpacePoint), true, 512, JSON_THROW_ON_ERROR);
+            return \is_array($decoded) ? $decoded : [];
+        }
+        return $dimensionSpacePoint;
+    }
+
+    /**
      * @param array<string,string> $dimensionSpacePoint
      */
     public function getReadingContentContext(array $dimensionSpacePoint): ContentContext

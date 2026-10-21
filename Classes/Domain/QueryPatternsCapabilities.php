@@ -76,8 +76,8 @@ class QueryPatternsCapabilities
             'parameterFormats' => [
                 [
                     'parameter' => 'dimensionSpacePoint',
-                    'format' => 'urlencoded-json-object',
-                    'description' => 'A dimension space point as reported by the dimensionspace tool, URL-encoded. The examples below are illustrations of the encoding only - they are not values this installation necessarily has.',
+                    'format' => 'object-or-urlencoded-json-object',
+                    'description' => 'A dimension space point as reported by the dimensionspace tool. Both the object form ({language: "de"}, or {} for an installation with no content dimensions) and the URL-encoded JSON string form (%7B%22language%22%3A%22de%22%7D) are accepted everywhere; the URL-encoded form is deprecated but kept for compatibility with the read and site tools. The examples below are illustrations of the encoding only - they are not values this installation necessarily has.',
                     'exampleRaw' => '{"language":"de"}',
                     'exampleEncoded' => '%7B%22language%22%3A%22de%22%7D',
                     'exampleWhenNoDimensions' => [

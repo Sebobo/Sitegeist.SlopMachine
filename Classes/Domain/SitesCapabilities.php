@@ -33,7 +33,7 @@ class SitesCapabilities
     #[McpTool(
         name: 'search-sites',
         description: 'Search available Neos sites and return search results with IDs that can be used for subsequent operations.
-            Call the dimensionspace tool to obtain a dimension space point that this installation allows and pass it URL-encoded; do not invent dimension names or values.
+            The dimensionSpacePoint parameter accepts either an object (the shape the dimensionspace tool returns) or a URL-encoded JSON string; both forms are equivalent. Do not invent dimension names or values - call the dimensionspace tool once to get the points this installation allows.
             To also get the URLs, enabled status and domains of the sites, use list-site-urls.
             This tool is read-only and does not modify anything.',
         annotations: new ToolAnnotations(
@@ -43,12 +43,9 @@ class SitesCapabilities
             openWorldHint: false,
         )
     )]
+    #[Schema(properties: McpSchemaLibrary::DIMENSION_SPACE_POINT_TOOL_SCHEMA['properties'])]
     public function list(
-        #[Schema(
-            type: 'string',
-            description: 'URL-encoded JSON dimension space point. Get a valid one from the dimensionspace tool; if this installation has no content dimensions, use %7B%7D.',
-        )]
-        string $dimensionSpacePoint,
+        string|array $dimensionSpacePoint = [],
     ): array {
         $sites = [];
         $failure = $this->read($dimensionSpacePoint, function (ContentContext $contentContext) use (&$sites): void {
@@ -70,7 +67,7 @@ class SitesCapabilities
         }
 
         return [
-            'uri' => 'sites://list/' . \rawurlencode(\json_encode(\json_decode(\urldecode($dimensionSpacePoint), true) ?: [], JSON_THROW_ON_ERROR)),
+            'uri' => 'sites://list/' . \rawurlencode(\json_encode(MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint) ?: [], JSON_THROW_ON_ERROR)),
             'name' => 'Sites',
             'description' => 'A list of sites. The nodeAggregateId identifies the site\'s root node in the subgraph.',
             'mimeType' => 'application/json',
@@ -90,7 +87,7 @@ class SitesCapabilities
             enabled is false when the site is taken offline, and a domain with active false is not routed at all, so such a site cannot be opened in a browser.
             These URLs serve the published content. Writes you make land in a workspace that is not published, so opening a URL shows what is live, not what you just changed. Use this to check published content, never to verify your own writes.
             Pass siteNodeName to get a single site instead of all of them.
-            Call the dimensionspace tool to obtain a dimension space point that this installation allows and pass it URL-encoded; do not invent dimension names or values.
+            The dimensionSpacePoint parameter accepts either an object (the shape the dimensionspace tool returns) or a URL-encoded JSON string; both forms are equivalent.
             This tool is read-only and does not modify anything.',
         annotations: new ToolAnnotations(
             readOnlyHint: true,
@@ -99,12 +96,9 @@ class SitesCapabilities
             openWorldHint: false,
         )
     )]
+    #[Schema(properties: McpSchemaLibrary::DIMENSION_SPACE_POINT_TOOL_SCHEMA['properties'])]
     public function listUrls(
-        #[Schema(
-            type: 'string',
-            description: 'URL-encoded JSON dimension space point. Get a valid one from the dimensionspace tool; if this installation has no content dimensions, use %7B%7D.',
-        )]
-        string $dimensionSpacePoint,
+        string|array $dimensionSpacePoint = [],
         #[Schema(
             type: 'string',
             description: 'Return only the site with this node name, for example "alwe". Omit it to get all sites.',
@@ -146,7 +140,7 @@ class SitesCapabilities
         }
 
         return [
-            'uri' => 'sites://urls/' . \rawurlencode(\json_encode(\json_decode(\urldecode($dimensionSpacePoint), true) ?: [], JSON_THROW_ON_ERROR)),
+            'uri' => 'sites://urls/' . \rawurlencode(\json_encode(MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint) ?: [], JSON_THROW_ON_ERROR)),
             'name' => 'Site URLs',
             'description' => 'The sites of this installation with their enabled status, their domains, the primary domain of each site and the absolute URL of every domain. The URLs serve the published content, not the content of a workspace.',
             'mimeType' => 'application/json',
@@ -213,11 +207,10 @@ class SitesCapabilities
      * @param callable(ContentContext):void $reader
      * @return array<string,mixed>|null The failure payload, or null when the reader ran
      */
-    private function read(string $dimensionSpacePoint, callable $reader): ?array
+    private function read(string|array $dimensionSpacePoint, callable $reader): ?array
     {
         try {
-            $decoded = \json_decode(\urldecode($dimensionSpacePoint), true, 512, JSON_THROW_ON_ERROR);
-            $reader($this->contentContextFactory->getReadingContentContext(\is_array($decoded) ? $decoded : []));
+            $reader($this->contentContextFactory->getReadingContentContext(MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint)));
         } catch (\Throwable $throwable) {
             return [
                 'success' => false,

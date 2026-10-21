@@ -35,7 +35,7 @@ final class McpSchemaLibrary
      * @var array<string,mixed>
      */
     public const DIMENSION_SPACE_POINT = [
-        'type' => ['object', 'array'],
+        'type' => ['object', 'array', 'string'],
         'maxItems' => 0,
         'additionalProperties' => ['type' => 'string'],
     ];

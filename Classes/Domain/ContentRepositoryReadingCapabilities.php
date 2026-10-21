@@ -50,8 +50,9 @@ class ContentRepositoryReadingCapabilities
             openWorldHint: false,
         )
     )]
+    #[Schema(properties: McpSchemaLibrary::DIMENSION_SPACE_POINT_TOOL_SCHEMA['properties'])]
     public function findChildren(
-        string $dimensionSpacePoint,
+        string|array $dimensionSpacePoint = [],
         string $parentNodeAggregateId,
         string $nodeTypeNames,
         string $limitToPropertyNames,
@@ -66,7 +67,7 @@ class ContentRepositoryReadingCapabilities
                 &$result,
             ) {
                 try {
-                    $dimensionSpacePoint = \json_decode(\urldecode($dimensionSpacePoint), true, 512, JSON_THROW_ON_ERROR);
+                    $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
                     $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
                     $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
                     $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
@@ -136,8 +137,9 @@ class ContentRepositoryReadingCapabilities
             openWorldHint: false,
         )
     )]
+    #[Schema(properties: McpSchemaLibrary::DIMENSION_SPACE_POINT_TOOL_SCHEMA['properties'])]
     public function findDescendants(
-        string $dimensionSpacePoint,
+        string|array $dimensionSpacePoint = [],
         string $ancestorNodeAggregateId,
         string $nodeTypeNames,
         string $searchTerm,
@@ -154,7 +156,7 @@ class ContentRepositoryReadingCapabilities
                 &$result,
             ) {
                 try {
-                    $dimensionSpacePoint = \json_decode(\urldecode($dimensionSpacePoint), true, 512, JSON_THROW_ON_ERROR);
+                    $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
                     $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
                     $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
                     $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
@@ -232,8 +234,9 @@ class ContentRepositoryReadingCapabilities
             openWorldHint: false,
         )
     )]
+    #[Schema(properties: McpSchemaLibrary::DIMENSION_SPACE_POINT_TOOL_SCHEMA['properties'])]
     public function findSubtree(
-        string $dimensionSpacePoint,
+        string|array $dimensionSpacePoint = [],
         string $entryNodeAggregateId,
         string $nodeTypeNames,
         int $maximumLevels,
@@ -250,7 +253,7 @@ class ContentRepositoryReadingCapabilities
                 &$result,
             ) {
                 try {
-                    $dimensionSpacePoint = \json_decode(\urldecode($dimensionSpacePoint), true, 512, JSON_THROW_ON_ERROR);
+                    $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
                     $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
                     $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
                     $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);

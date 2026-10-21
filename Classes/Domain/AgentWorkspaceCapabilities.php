@@ -77,11 +77,11 @@ class AgentWorkspaceCapabilities
         )]
         array $nodeAggregateIds,
         #[Schema(
-            description: 'The dimension space point to write in. Pass a point this installation allows: call the dimensionspace tool to get the valid points, and use the empty object {} only if it reports that this installation has no content dimensions.',
+            description: 'The dimension space point to write in. Pass a point this installation allows: call the dimensionspace tool to get the valid points, and use the empty object {} only if it reports that this installation has no content dimensions. Both the object form and the URL-encoded JSON string form are accepted.',
         )]
-        array $dimensionSpacePoint = [],
+        string|array $dimensionSpacePoint = [],
     ): array {
-        $contentContext = $this->contentContextFactory->getWritingContentContext($dimensionSpacePoint);
+        $contentContext = $this->contentContextFactory->getWritingContentContext(MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint));
         $workspace = $this->agentWorkspaceResolver->getWorkspace();
         $result = [];
 
@@ -228,9 +228,9 @@ class AgentWorkspaceCapabilities
         #[Schema(type: 'boolean', description: 'Revert every change in the workspace instead of the given selection.')]
         bool $discardAll = false,
         #[Schema(
-            description: 'The dimension space point to write in. Pass a point this installation allows: call the dimensionspace tool to get the valid points, and use the empty object {} only if it reports that this installation has no content dimensions.',
+            description: 'The dimension space point to write in. Pass a point this installation allows: call the dimensionspace tool to get the valid points, and use the empty object {} only if it reports that this installation has no content dimensions. Both the object form and the URL-encoded JSON string form are accepted.',
         )]
-        array $dimensionSpacePoint = [],
+        string|array $dimensionSpacePoint = [],
     ): array {
         $workspace = $this->agentWorkspaceResolver->getWorkspace();
         $result = [];
@@ -247,7 +247,7 @@ class AgentWorkspaceCapabilities
                     return;
                 }
 
-                $contentContext = $this->contentContextFactory->getWritingContentContext($dimensionSpacePoint);
+                $contentContext = $this->contentContextFactory->getWritingContentContext(MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint));
                 foreach ($nodeAggregateIds as $nodeAggregateId) {
                     try {
                         $node = $contentContext->getNodeByIdentifier($nodeAggregateId);
