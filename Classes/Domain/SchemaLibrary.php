@@ -142,6 +142,28 @@ final class SchemaLibrary
         'additionalProperties' => false,
     ];
 
+    public const MOVE_NODE_SCHEMA = [
+        'type' => 'object',
+        'description' => 'A single MoveNode command. Moves a node below another node, keeping its properties and
+            its children. The node keeps its identity, so references and node:// links to it stay valid.',
+        'properties' => [
+            'type' => [
+                'type' => 'string',
+                'const' => 'MoveNode',
+            ],
+            'nodeAggregateId' => ['type' => 'string'],
+            'newParentNodeAggregateId' => ['type' => 'string'],
+            'originDimensionSpacePoint' => self::DIMENSION_SPACE_POINT,
+        ],
+        'required' => [
+            'type',
+            'nodeAggregateId',
+            'newParentNodeAggregateId',
+            'originDimensionSpacePoint',
+        ],
+        'additionalProperties' => false,
+    ];
+
     public const COMMANDS_SCHEMA = [
         'oneOf' => [
             self::CREATE_NODEAGGREGATE_WITH_NODE_SCHEMA,
