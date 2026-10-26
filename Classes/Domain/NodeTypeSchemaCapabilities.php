@@ -53,6 +53,8 @@ class NodeTypeSchemaCapabilities
                         'label' => $propertyConfiguration['ui']['label'] ?? '',
                         'defaultValue' => $propertyConfiguration['defaultValue'] ?? '',
                         'required' => ($propertyConfiguration['validation']['Neos.Neos/Validation/NotEmptyValidator'] ?? null) !== null,
+                        'formatting' => $this->inlineFormatting($propertyConfiguration),
+                        'editorOptions' => $this->inspectorEditorOptions($propertyConfiguration),
                     ],
                     array_filter(
                         $nodeType->getProperties(),
@@ -74,6 +76,8 @@ class NodeTypeSchemaCapabilities
                 The properties field defines all properties that can be set on a node of that type.
                 An exception are properties of type reference or references. Those can reference other nodes instead. Single reference properties can be set to the target node\'s aggregate id. Properties of type references can be set to a list of node aggregate ids. Use the SetNodeReferences tool for writing references.
                 The required flag marks properties that carry a not-empty validation, which is a hint and not a guarantee that a value will be accepted.
+                The formatting field lists the formats the inline editor offers for a rich text property, as a name to enabled map. Such a property holds HTML, not plain text: the title of Neos.NodeTypes:Headline for example holds an <h1> to <h3> tag rather than a level in a separate property, so the tag has to be part of the value. A format that is not listed is not offered by the editor.
+                The editorOptions field lists the options of the inspector editor, for example the choices of a select box or the range and unit of a number. A value outside them is not what the editor would produce.
                 The constraints field defines structural restrictions the node type imposes, e.g. what type children of a node of this type must be of. A create command that violates a constraint is rejected.
                 The tetheredChildren field defines which child nodes are automatically created under a new node of this type, and are addressed by their node name, not by an aggregate id.',
             'mimeType' => 'application/json',
@@ -130,6 +134,54 @@ class NodeTypeSchemaCapabilities
             'mimeType' => 'application/json',
             'text' => \json_encode($schema),
         ];
+    }
+
+    /**
+     * The inline editor's formatting whitelist of a property.
+     *
+     * A rich text property is not plain text: the editor offers a fixed set of
+     * formats, and the value of such a property is HTML. The headline of
+     * Neos.NodeTypes:Headline is the clearest example - its title holds an
+     * `<h1>` to `<h3>` tag, not a level in a separate property. Without this
+     * the whitelist is invisible to a client, and the only way to find out is to
+     * read the node type configuration by hand.
+     *
+     * @param array<string,mixed> $propertyConfiguration
+     * @return array<string,bool>|null
+     */
+    private function inlineFormatting(array $propertyConfiguration): ?array
+    {
+        $formatting = $propertyConfiguration['ui']['inline']['editorOptions']['formatting'] ?? null;
+        if (!\is_array($formatting)) {
+            return null;
+        }
+        $formats = [];
+        foreach ($formatting as $format => $enabled) {
+            $formats[(string)$format] = (bool)$enabled;
+        }
+        return $formats === [] ? null : $formats;
+    }
+
+    /**
+     * The inspector editor options of a property.
+     *
+     * These are the values an editor can choose from - the options of a select
+     * box, the unit and the range of a number, the items of a list. A client
+     * that writes the property needs them to stay inside what the editor
+     * offers.
+     *
+     * @param array<string,mixed> $propertyConfiguration
+     * @return array<string,mixed>|null
+     */
+    private function inspectorEditorOptions(array $propertyConfiguration): ?array
+    {
+        $options = $propertyConfiguration['ui']['inspector']['editorOptions'] ?? null;
+        if (!\is_array($options)) {
+            return null;
+        }
+        // the placeholder is a label for the empty value, not a choice
+        unset($options['placeholder']);
+        return $options === [] ? null : $options;
     }
 
     /**
