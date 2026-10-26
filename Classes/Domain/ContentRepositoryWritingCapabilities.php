@@ -18,6 +18,8 @@ use Neos\Neos\Domain\Service\ContentContext;
 #[Flow\Proxy(false)]
 class ContentRepositoryWritingCapabilities
 {
+    use PropertyValueConversionTrait;
+
     public function __construct(
         protected MCPContentContextFactory $contentContextFactory,
         protected NodeTypeManager $nodeTypeManager,
@@ -397,9 +399,7 @@ class ContentRepositoryWritingCapabilities
             if ($expectedType === 'reference' || $expectedType === 'references') {
                 throw new \Exception('References must be set as references, not properties.');
             }
-            if (class_exists($expectedType) && !$propertyValue instanceof $expectedType) {
-                $propertyValue = $this->propertyMapper->convert($propertyValue, $expectedType);
-            }
+            $propertyValue = $this->convertPropertyValue($propertyName, $expectedType, $propertyValue);
             $node->setProperty($propertyName, $propertyValue);
         }
     }

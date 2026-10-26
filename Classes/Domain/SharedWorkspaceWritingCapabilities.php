@@ -29,6 +29,8 @@ use Neos\Flow\Security\Context as SecurityContext;
 #[Flow\Proxy(false)]
 class SharedWorkspaceWritingCapabilities
 {
+    use PropertyValueConversionTrait;
+
     public function __construct(
         protected SharedWorkspaceContextFactory $sharedWorkspaceContextFactory,
         protected NodeTypeManager $nodeTypeManager,
@@ -398,9 +400,7 @@ class SharedWorkspaceWritingCapabilities
             if ($expectedType === 'reference' || $expectedType === 'references') {
                 throw new \Exception('References must be set as references, not properties.');
             }
-            if (\class_exists($expectedType) && !$propertyValue instanceof $expectedType) {
-                $propertyValue = $this->propertyMapper->convert($propertyValue, $expectedType);
-            }
+            $propertyValue = $this->convertPropertyValue($propertyName, $expectedType, $propertyValue);
             $node->setProperty($propertyName, $propertyValue);
         }
     }

@@ -23,6 +23,8 @@ final class ContentRepositoryInstructionsProvider implements InstructionsProvide
             The schema does not have to be validated on the client side, never send any ping or test calls. Those are a pure waste of time.
             Every tool that reads or writes content takes a dimension space point, and the point has to be one this installation allows. Call the dimensionspace tool once at the start to get the points that are valid, and use one of them for all following calls; if it reports a single empty object, that empty object {} is the point to use. A point that names a dimension or value this installation does not have is rejected instead of being silently ignored.
             Call the dimensionspace tool on every run rather than assuming the point from a previous run: which dimensions exist is a property of the installation and can change.
-            Check with the query-patterns tool on how to encode parameters.';
+            Check with the query-patterns tool on how to encode parameters.
+            Assets are not part of the content repository. An asset uploaded with the upload-asset tool is live the moment the call returns: it is not part of any workspace, and neither DiscardChanges nor RemoveNode can take it back. Every upload goes into one asset collection and carries a tag, so that a human can find and remove it again.
+            To put an uploaded asset on a page, pass the assetId the upload returned as the value of the image property with SetNodeProperties. The value is stored as the asset itself, not as its id.';
     }
 }

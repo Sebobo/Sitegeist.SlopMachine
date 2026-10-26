@@ -44,6 +44,24 @@ class AgentWorkspaceResolver
             : UserUtility::getPersonalWorkspaceNameForUsername($username);
     }
 
+    /**
+     * The name of the Neos user the calling agent is assigned to, or NULL if the agent is
+     * not assigned to a user.
+     *
+     * The account identifier of the agent is the bearer token it authenticates with, so it
+     * must not be written down anywhere - in a tag label for example. The name of the
+     * assigned user identifies the agent without exposing the token.
+     */
+    public function getAssignedUsername(): ?string
+    {
+        $agentAssignment = $this->agentAssignmentRepository->findOneByCurrentAccount();
+        if (!$agentAssignment) {
+            return null;
+        }
+
+        return $this->userService->getUsername($agentAssignment->user);
+    }
+
     public function getWorkspace(): Workspace
     {
         $workspaceName = $this->getWorkspaceName();

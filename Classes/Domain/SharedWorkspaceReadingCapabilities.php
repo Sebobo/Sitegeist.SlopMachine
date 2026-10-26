@@ -12,6 +12,7 @@ use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Neos\ContentRepository\Domain\Repository\NodeDataRepository;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Security\Context as SecurityContext;
+use Neos\Media\Domain\Model\Asset;
 
 /**
  * Read access to the shared review workspace.
@@ -240,14 +241,34 @@ class SharedWorkspaceReadingCapabilities
             'aggregateId' => $node->getIdentifier(),
             'label' => $node->getLabel(),
             'path' => $node->getPath(),
-            'properties' => \array_filter(
-                \iterator_to_array($node->getProperties()),
-                static fn (string $propertyName): bool => !$limitToPropertyNames
-                    || \in_array($propertyName, $limitToPropertyNames, true),
-                \ARRAY_FILTER_USE_KEY
+            'properties' => \array_map(
+                fn (mixed $value): mixed => $this->serializePropertyValue($value),
+                \array_filter(
+                    \iterator_to_array($node->getProperties()),
+                    static fn (string $propertyName): bool => !$limitToPropertyNames
+                        || \in_array($propertyName, $limitToPropertyNames, true),
+                    \ARRAY_FILTER_USE_KEY
+                )
             ),
             'nodeTypeName' => $node->getNodeTypeName(),
         ];
+    }
+
+    /**
+     * An asset property is serialised as the asset it points to. The asset object itself
+     * has no public property that identifies it, so the identifier and the title are what
+     * tells one asset from another.
+     */
+    private function serializePropertyValue(mixed $value): mixed
+    {
+        if ($value instanceof Asset) {
+            return [
+                'id' => $value->getIdentifier(),
+                'title' => $value->getTitle(),
+            ];
+        }
+
+        return $value;
     }
 
     /**

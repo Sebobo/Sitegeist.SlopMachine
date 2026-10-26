@@ -4,3 +4,8 @@ Sitegeist\SlopMachine\Domain\SharedWorkspaceContextFactory:
   arguments:
     5:
       setting: 'Sitegeist.SlopMachine.agent'
+
+Sitegeist\SlopMachine\Domain\MediaUploadSettings:
+  arguments:
+    1:
+      setting: 'Sitegeist.SlopMachine.agent.media'
