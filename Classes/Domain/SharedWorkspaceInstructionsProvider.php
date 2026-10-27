@@ -62,16 +62,21 @@ final class SharedWorkspaceInstructionsProvider implements InstructionsProvider
               values and issue the same commands against the shared workspace. It assigns its own node
               aggregate ids - one you created in your own workspace does not exist there, so you can only
               attach new content below nodes that are already published there.
-            - Do not rely on your own workspace to mirror the shared one. It only shows content of the shared
-              review workspace while its base workspace is that shared workspace, which ListUnpublishedChanges
-              reports as baseWorkspace. If it reports something else, shared writes are invisible to your own
-              read tools, so check the shared review workspace through its own read tools instead. Hand a
-              package over once, into the shared review workspace, and never write the same content into both.
+            - What your own read tools can see of the shared review workspace depends on the base workspace
+              named above, and ListUnpublishedChanges reports it as baseWorkspace. If it is the shared review
+              workspace, the shared content shows through in your own read tools under the same node aggregate
+              ids, and find-subtree reads a shared node directly: ask for it by its id and you get its own
+              properties back. If it is anything else, the shared content is invisible to your own read tools:
+              read the shared review workspace through find-children-in-shared-workspace and
+              find-descendants-in-shared-workspace instead. Hand a package over once, into the shared review
+              workspace, and never write the same content into both.
             - To read the shared review workspace, use find-children-in-shared-workspace or
-              find-descendants-in-shared-workspace. Check it before you hand a package over, or you will
-              create content that already exists there. Compare titles as well as uriPathSegment values:
-              a node whose requested uriPathSegment was taken by a sibling is stored with a numeric
-              suffix and is easy to miss when you filter for the exact value.
+              find-descendants-in-shared-workspace. Neither of them returns the node you start from, only the
+              nodes below it, so to learn the own properties of a single node in the shared review workspace,
+              look for it among the children of its parent. Check the shared review workspace before you hand
+              a package over, or you will create content that already exists there. Compare titles as well
+              as uriPathSegment values: a node whose requested uriPathSegment was taken by a sibling is
+              stored with a numeric suffix and is easy to miss when you filter for the exact value.
             - If you already handed something over and noticed a mistake afterwards, do not try to revert:
               write the corrected content into your own workspace first, then hand it over again.
               BulkWriteToSharedWorkspace accepts the same Create/Set/Bulk commands for the same node
