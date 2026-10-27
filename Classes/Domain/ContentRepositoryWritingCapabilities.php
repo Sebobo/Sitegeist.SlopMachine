@@ -130,7 +130,7 @@ class ContentRepositoryWritingCapabilities
 
     /**
      * @param array<int,array<string,mixed>> $commands
-     * @return array<int,array<string,mixed>>
+     * @return array<string,mixed>
      */
     #[McpTool(
         name: 'BulkWriting',
@@ -142,7 +142,8 @@ class ContentRepositoryWritingCapabilities
             An example command would be {"type": "SetNodeProperties", "nodeAggregateId": "8a887309-5803-458d-b30a-40736f5a5d82", "originDimensionSpacePoint": {}, "propertyValues": {"title": "My Title"}}
             A command that names a node or parent that does not exist, or a node type that is not allowed there, is reported as failed with that reason; commands that already succeeded stay applied.
             The commands are unserialized along with the `commands` parameter and must not be double encoded.
-            Returns a list of command results, one per issued command in correct order.
+            Returns an object with the outcome of the batch: `successCount`, `failureCount` and `results`,
+            where `results` holds one entry per issued command in the order the commands were sent.
             This tool does not work transactionally, commands that succeeded have been applied and can be considered as much for the current content graph state.
             If more than one write operation is required, always prefer this tool.
             Single-operation tools (CreateNodeAggregateWithNode, SetNodeProperties, SetNodeReferences) are only allowed if:
@@ -203,7 +204,16 @@ class ContentRepositoryWritingCapabilities
             };
         }
 
-        return $result;
+        // The result is an object, not a list: the MCP specification defines the structured
+        // content of a tool result as a JSON object, and a client that validates against the
+        // specification rejects a list as "expected record, received array".
+        $successCount = \count(\array_filter($result, static fn (array $entry): bool => $entry['success'] ?? false));
+
+        return [
+            'successCount' => $successCount,
+            'failureCount' => \count($result) - $successCount,
+            'results' => $result,
+        ];
     }
 
     /**

@@ -59,7 +59,7 @@ class SharedWorkspaceWritingCapabilities
      * corrected and retried. If more than one write operation is required, always prefer this tool.
      *
      * @param array<int,array<string,mixed>> $commands List of write commands, each item a command object, not a JSON string
-     * @return array<int,array<string,mixed>>
+     * @return array<string,mixed>
      */
     #[McpTool(
         name: 'BulkWriteToSharedWorkspace',
@@ -70,7 +70,8 @@ class SharedWorkspaceWritingCapabilities
             Commands must be sent as objects, not as JSON strings. An example command would be
             {"type": "SetNodeProperties", "nodeAggregateId": "8a887309-5803-458d-b30a-40736f5a5d82", "originDimensionSpacePoint": {}, "propertyValues": {"title": "My Title"}}
             The commands are unserialized along with the `commands` parameter and must not be double encoded.
-            Returns a list of command results, one per issued command in correct order.
+            Returns an object with the outcome of the batch: `workspace`, `successCount`, `failureCount` and
+            `results`, where `results` holds one entry per issued command in the order the commands were sent.
             This tool does not work transactionally, commands that succeeded have been applied and can be considered
             as much for the current content graph state.
             - Error handling:
@@ -94,6 +95,10 @@ class SharedWorkspaceWritingCapabilities
         )]
         array $commands,
     ): array {
+        // Resolved before the first command: a misconfigured installation has to fail before
+        // anything is written, not after.
+        $workspaceName = $this->sharedWorkspaceContextFactory->getWorkspaceName();
+
         $result = [];
         foreach ($commands as $command) {
             $result[] = match ($command['type'] ?? null) {
@@ -128,7 +133,19 @@ class SharedWorkspaceWritingCapabilities
             };
         }
 
-        return $result;
+        // The result is an object, not a list: the MCP specification defines the structured
+        // content of a tool result as a JSON object, and a client that validates against the
+        // specification rejects a list as "expected record, received array". The write itself
+        // is applied either way, so a client that sees this error has to read the content back
+        // instead of retrying the batch.
+        $successCount = \count(\array_filter($result, static fn (array $entry): bool => $entry['success'] ?? false));
+
+        return [
+            'workspace' => $workspaceName,
+            'successCount' => $successCount,
+            'failureCount' => \count($result) - $successCount,
+            'results' => $result,
+        ];
     }
 
     /**
