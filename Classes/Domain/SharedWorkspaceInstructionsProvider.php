@@ -59,9 +59,13 @@ final class SharedWorkspaceInstructionsProvider implements InstructionsProvider
               something they can judge as a whole.
             - To hand a package over, use BulkWriteToSharedWorkspace. It takes the same commands as
               BulkWriting, so nothing about the writing dialect changes: read your own workspace for the
-              values and issue the same commands against the shared workspace. It assigns its own node
-              aggregate ids - one you created in your own workspace does not exist there, so you can only
-              attach new content below nodes that are already published there.
+              values and issue the same commands against the shared workspace. A create command may carry
+              the nodeAggregateId you want the new node to have, and the tool honours it, so a whole tree
+              can be planned with your own ids - but only if those ids are not taken in the shared review
+              workspace yet. An id that already exists there is reported as failed, and you must not reuse
+              the id of a node you created in your own workspace: that node does not exist in the shared
+              review workspace, so you can only attach new content below nodes that are already published
+              there.
             - What your own read tools can see of the shared review workspace depends on the base workspace
               named above, and ListUnpublishedChanges reports it as baseWorkspace. If it is the shared review
               workspace, the shared content shows through in your own read tools under the same node aggregate
