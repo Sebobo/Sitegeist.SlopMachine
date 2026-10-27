@@ -281,13 +281,12 @@ class ContentRepositoryWritingCapabilities
                     ];
                     $this->reportEffectivePropertyValues($createdNode, $initialPropertyValues, $payload);
 
-                    $result = [
-                        'content' => [
-                            'type' => 'text',
-                            'text' => \json_encode($payload),
-                        ],
-                        'structuredContent' => $payload,
-                    ];
+                    // The payload is the entry of a list of command results, not a tool result
+                    // of its own, so it is returned flat. Wrapping it in a tool result envelope
+                    // would hide the success flag one level deeper than in every other command
+                    // result of this tool, and the shared workspace variant of this bulk write
+                    // returns it flat as well.
+                    $result = $payload;
                 } catch (\Throwable $exception) {
                     $result = [
                         'success' => false,
