@@ -33,14 +33,16 @@ class SharedWorkspaceReadingCapabilities
         protected SharedWorkspaceContextFactory $sharedWorkspaceContextFactory,
         protected NodeDataRepository $nodeDataRepository,
         protected SecurityContext $securityContext,
+        protected ReadPagination $readPagination,
     ) {
     }
 
     /**
      * @param array<string,string> $dimensionSpacePoint
+     * @param array<string,mixed> $cursor the nextCursor of a previous result
      * @return array<string,mixed>
      */
-    #[Schema(properties: McpSchemaLibrary::DIMENSION_SPACE_POINT_TOOL_SCHEMA['properties'])]
+    #[Schema(properties: McpSchemaLibrary::PAGED_READ_TOOL_SCHEMA['properties'])]
     #[McpTool(
         name: 'find-children-in-shared-workspace',
         description: 'A list of all child nodes of a given parent in the shared review workspace, optionally filtered by node type.
@@ -51,7 +53,8 @@ class SharedWorkspaceReadingCapabilities
             "Neos.Neos:Document" returns document types like pages as well. To reduce response size, limit the
             returned properties to the list of given names in limitToPropertyNames. To skip a parameter,
             provide an asterisk (*) as value. If the result is cut off at limit, truncated tells you that
-            there are more children than you received - narrow the query instead of assuming you saw them all.
+            there are more children than you received - send the nextCursor back as the cursor to get the next page.
+            The cursor is a best effort resume position, not a snapshot.
             This tool is read-only and does not modify anything.',
         annotations: new ToolAnnotations(
             readOnlyHint: true,
@@ -72,9 +75,11 @@ class SharedWorkspaceReadingCapabilities
         string $limitToPropertyNames = '*',
         #[Schema(type: 'integer', description: 'Upper bound on the number of returned nodes.', minimum: 1)]
         int $limit = 200,
+        #[Schema(description: 'The nextCursor of a previous result, to continue where it stopped.')]
+        array $cursor = [],
     ): array {
         return $this->read(
-            function ($contentContext) use ($parentNodeAggregateId, $nodeTypeNames, $limitToPropertyNames, $limit): array {
+            function ($contentContext) use ($parentNodeAggregateId, $nodeTypeNames, $limitToPropertyNames, $limit, $cursor): array {
                 $parentNode = $contentContext->getNodeByIdentifier($parentNodeAggregateId);
                 if (!$parentNode instanceof Node) {
                     throw new \RuntimeException(\sprintf('No node found for nodeAggregateId %s.', $parentNodeAggregateId));
@@ -86,7 +91,14 @@ class SharedWorkspaceReadingCapabilities
                     false
                 );
 
-                return $this->serializeNodes($nodes, $limitToPropertyNames, $limit);
+                $nodes = $this->readPagination->applyCursor($nodes, $cursor === [] ? null : $cursor);
+                $page = $this->readPagination->paginate($nodes, $limit);
+
+                return $this->serializeNodes($page['nodes'], $limitToPropertyNames, \PHP_INT_MAX) + [
+                    'returnedCount' => $page['returnedCount'],
+                    'truncated' => $page['truncated'],
+                    ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
+                ];
             },
             $dimensionSpacePoint
         );
@@ -94,9 +106,161 @@ class SharedWorkspaceReadingCapabilities
 
     /**
      * @param array<string,string> $dimensionSpacePoint
+     * @param array<string,mixed> $cursor the nextCursor of a previous result
      * @return array<string,mixed>
      */
-    #[Schema(properties: McpSchemaLibrary::DIMENSION_SPACE_POINT_TOOL_SCHEMA['properties'])]
+    #[Schema(properties: McpSchemaLibrary::PAGED_READ_TOOL_SCHEMA['properties'])]
+    #[McpTool(
+        name: 'find-content-in-shared-workspace',
+        description: 'The content of a single document in the shared review workspace - its content collections, the layout
+            roots below them and everything below those.
+            This is the scoped counterpart of find-descendants-in-shared-workspace: a document owns content of its own and
+            it may also parent other documents, and each of those brings its own content with it. The recursive query
+            mixes both, so on a page with child pages it returns the content of every one of them.
+            The result is a list of nodes, the document itself is not part of it. It is capped: when more nodes follow,
+            the result reports truncated and a nextCursor, and you continue with that cursor as the cursor parameter.
+            The cursor is a best effort resume position, not a snapshot - nodes that are added to or removed from the
+            document in between can change what the next page holds.
+            To reduce response size, you can limit the returned properties to the list of given names in limitToPropertyNames.
+            To skip a parameter, provide an asterisk (*) as value.
+            This tool is read-only and does not modify anything.',
+        annotations: new ToolAnnotations(
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+        )
+    )]
+    public function findContentInSharedWorkspace(
+        string $nodeAggregateId,
+        #[Schema(type: 'string', description: 'Comma separated list of property names to return, or * for all properties.')]
+        string $limitToPropertyNames = '*',
+        #[Schema(type: 'integer', description: 'Upper bound on the number of returned nodes.', minimum: 1)]
+        int $limit = ReadPagination::DEFAULT_LIMIT,
+        #[Schema(description: 'The nextCursor of a previous result, to continue where it stopped.')]
+        array $cursor = [],
+        #[Schema(
+            description: 'The dimension space point to read in. Pass a point this installation allows: call the dimensionspace tool to get the valid points, and use the empty object {} only if it reports that this installation has no content dimensions.',
+        )]
+        array $dimensionSpacePoint = [],
+    ): array {
+        return $this->read(
+            function ($contentContext) use ($nodeAggregateId, $limitToPropertyNames, $limit, $cursor): array {
+                $document = $contentContext->getNodeByIdentifier($nodeAggregateId);
+                if (!$document instanceof Node) {
+                    throw new \RuntimeException(\sprintf('No node found for nodeAggregateId %s.', $nodeAggregateId));
+                }
+
+                $nodes = [];
+                $seen = [];
+                $collections = $this->readPagination->findChildren($contentContext, $document, 'Neos.Neos:ContentCollection');
+                foreach ($collections as $collection) {
+                    foreach ($this->readPagination->findChildren($contentContext, $collection, '') as $layoutRoot) {
+                        if (!isset($seen[$layoutRoot->getIdentifier()])) {
+                            $seen[$layoutRoot->getIdentifier()] = true;
+                            $nodes[] = $layoutRoot;
+                        }
+                    }
+                    foreach ($this->readPagination->findDescendants($contentContext, $collection, '') as $descendant) {
+                        if (!isset($seen[$descendant->getIdentifier()])) {
+                            $seen[$descendant->getIdentifier()] = true;
+                            $nodes[] = $descendant;
+                        }
+                    }
+                }
+
+                $nodes = $this->readPagination->applyCursor($nodes, $cursor === [] ? null : $cursor);
+                $page = $this->readPagination->paginate($nodes, $limit);
+
+                return $this->serializeNodes($page['nodes'], $limitToPropertyNames, \PHP_INT_MAX) + [
+                    'returnedCount' => $page['returnedCount'],
+                    'truncated' => $page['truncated'],
+                    ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
+                ];
+            },
+            $dimensionSpacePoint
+        );
+    }
+
+    /**
+     * @param array<string,string> $dimensionSpacePoint
+     * @param array<string,mixed> $cursor the nextCursor of a previous result
+     * @return array<string,mixed>
+     */
+    #[Schema(properties: McpSchemaLibrary::PAGED_READ_TOOL_SCHEMA['properties'])]
+    #[McpTool(
+        name: 'find-documents-in-shared-workspace',
+        description: 'The documents below a node in the shared review workspace, without their content.
+            By default only the direct child documents are returned, which is the cheap case. With recursive set to
+            true, every document in the subtree is returned - that is the query that used to need
+            find-descendants-in-shared-workspace with a document filter, and it is expensive on a site with many pages.
+            The result is a list of nodes, the node you start from is not part of it. It is capped: when more nodes
+            follow, the result reports truncated and a nextCursor, and you continue with that cursor as the cursor
+            parameter. The cursor is a best effort resume position, not a snapshot - nodes that are added to or removed
+            from the subtree in between can change what the next page holds.
+            The nodeTypeNames parameter accepts a single node type or a comma separated list, for example
+            "Neos.Neos:Document,Oneway.Base:TariffPage". A node type also matches everything that extends it, so
+            "Neos.Neos:Document" returns the pages as well.
+            To reduce response size, you can limit the returned properties to the list of given names in limitToPropertyNames.
+            To skip a parameter, provide an asterisk (*) as value.
+            This tool is read-only and does not modify anything.',
+        annotations: new ToolAnnotations(
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+        )
+    )]
+    public function findDocumentsInSharedWorkspace(
+        string $nodeAggregateId,
+        #[Schema(type: 'string', description: 'A single node type or a comma separated list of node types.')]
+        string $nodeTypeNames = 'Neos.Neos:Document',
+        #[Schema(type: 'boolean', description: 'Return every document in the subtree instead of only the direct children.')]
+        bool $recursive = false,
+        #[Schema(type: 'string', description: 'Comma separated list of property names to return, or * for all properties.')]
+        string $limitToPropertyNames = '*',
+        #[Schema(type: 'integer', description: 'Upper bound on the number of returned nodes.', minimum: 1)]
+        int $limit = ReadPagination::DEFAULT_LIMIT,
+        #[Schema(description: 'The nextCursor of a previous result, to continue where it stopped.')]
+        array $cursor = [],
+        #[Schema(
+            description: 'The dimension space point to read in. Pass a point this installation allows: call the dimensionspace tool to get the valid points, and use the empty object {} only if it reports that this installation has no content dimensions.',
+        )]
+        array $dimensionSpacePoint = [],
+    ): array {
+        return $this->read(
+            function ($contentContext) use ($nodeAggregateId, $nodeTypeNames, $recursive, $limitToPropertyNames, $limit, $cursor): array {
+                $ancestorNode = $contentContext->getNodeByIdentifier($nodeAggregateId);
+                if (!$ancestorNode instanceof Node) {
+                    throw new \RuntimeException(\sprintf('No node found for nodeAggregateId %s.', $nodeAggregateId));
+                }
+
+                $nodeTypeFilter = $this->resolveListValue($nodeTypeNames);
+                $nodeTypeFilter = $nodeTypeFilter === [] ? '' : \implode(',', $nodeTypeFilter);
+
+                $nodes = $recursive
+                    ? $this->readPagination->findDescendants($contentContext, $ancestorNode, $nodeTypeFilter)
+                    : $this->readPagination->findChildren($contentContext, $ancestorNode, $nodeTypeFilter);
+
+                $nodes = $this->readPagination->applyCursor($nodes, $cursor === [] ? null : $cursor);
+                $page = $this->readPagination->paginate($nodes, $limit);
+
+                return $this->serializeNodes($page['nodes'], $limitToPropertyNames, \PHP_INT_MAX) + [
+                    'returnedCount' => $page['returnedCount'],
+                    'truncated' => $page['truncated'],
+                    ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
+                ];
+            },
+            $dimensionSpacePoint
+        );
+    }
+
+    /**
+     * @param array<string,string> $dimensionSpacePoint
+     * @param array<string,mixed> $cursor the nextCursor of a previous result
+     * @return array<string,mixed>
+     */
+    #[Schema(properties: McpSchemaLibrary::PAGED_READ_TOOL_SCHEMA['properties'])]
     #[McpTool(
         name: 'find-descendants-in-shared-workspace',
         description: 'A list of all descendant nodes of a given ancestor in the shared review workspace, optionally
@@ -104,12 +268,17 @@ class SharedWorkspaceReadingCapabilities
             you want to see how a whole subtree looks there. A descendant is any node below the given one, not the
             node itself. It is an expensive query - if you already know the parent to look at, prefer
             find-children-in-shared-workspace.
+            The subtree of a page contains the content of every document below it as well, so when the question is
+            about one document, prefer find-content-in-shared-workspace for its content and
+            find-documents-in-shared-workspace for the documents below it.
             The nodeTypeNames parameter accepts a single node type or a comma separated list, for example
             "Neos.Neos:Document,Neos.Neos:Content". A node type also matches everything that extends it, so
             "Neos.Neos:Document" returns document types like pages as well. To reduce response size, limit the
             returned properties to the list of given names in limitToPropertyNames. To skip a parameter,
             provide an asterisk (*) as value. If the result is cut off at limit, truncated tells you that
-            there are more descendants than you received - narrow the query instead of assuming you saw them all.
+            there are more descendants than you received - send the nextCursor back as the cursor to get the next
+            page. The cursor is a best effort resume position, not a snapshot - nodes that are added to or removed
+            from the subtree in between can change what the next page holds.
             This tool is read-only and does not modify anything.',
         annotations: new ToolAnnotations(
             readOnlyHint: true,
@@ -130,9 +299,11 @@ class SharedWorkspaceReadingCapabilities
         string $limitToPropertyNames = '*',
         #[Schema(type: 'integer', description: 'Upper bound on the number of returned nodes.', minimum: 1)]
         int $limit = 200,
+        #[Schema(description: 'The nextCursor of a previous result, to continue where it stopped.')]
+        array $cursor = [],
     ): array {
         return $this->read(
-            function ($contentContext) use ($ancestorNodeAggregateId, $nodeTypeNames, $limitToPropertyNames, $limit): array {
+            function ($contentContext) use ($ancestorNodeAggregateId, $nodeTypeNames, $limitToPropertyNames, $limit, $cursor): array {
                 $ancestorNode = $contentContext->getNodeByIdentifier($ancestorNodeAggregateId);
                 if (!$ancestorNode instanceof Node) {
                     throw new \RuntimeException(\sprintf('No node found for nodeAggregateId %s.', $ancestorNodeAggregateId));
@@ -144,7 +315,14 @@ class SharedWorkspaceReadingCapabilities
                     true
                 );
 
-                return $this->serializeNodes($nodes, $limitToPropertyNames, $limit);
+                $nodes = $this->readPagination->applyCursor($nodes, $cursor === [] ? null : $cursor);
+                $page = $this->readPagination->paginate($nodes, $limit);
+
+                return $this->serializeNodes($page['nodes'], $limitToPropertyNames, \PHP_INT_MAX) + [
+                    'returnedCount' => $page['returnedCount'],
+                    'truncated' => $page['truncated'],
+                    ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
+                ];
             },
             $dimensionSpacePoint
         );

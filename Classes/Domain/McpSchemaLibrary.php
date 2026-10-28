@@ -66,6 +66,41 @@ final class McpSchemaLibrary
         'minItems' => 1,
     ];
 
+    /**
+     * The cursor of a paged read: the position to resume from.
+     *
+     * It is an object with the index of the last node of the previous page and its aggregate id.
+     * The empty form - an empty object or an empty array - means "start at the beginning", which
+     * is also what a caller sends when it does not want to continue a page.
+     *
+     * The type is a union for the same reason as the dimension space point: the SDK merges the
+     * type it infers from the PHP signature ("array") into the same schema node, and a sibling
+     * "type" keyword would reject the object form. An empty PHP array is encoded as a JSON array
+     * rather than as an empty object, so the array form has to be accepted as well.
+     *
+     * @var array<string,mixed>
+     */
+    public const CURSOR = [
+        'type' => ['object', 'array'],
+        'additionalProperties' => ['type' => ['string', 'integer']],
+    ];
+
+    /**
+     * The method level schema of a read tool that can be paged.
+     *
+     * The cursor needs a union type, and the Schema attribute only takes a single type string at
+     * the parameter level - the union has to come from the method level, which is where the
+     * dimension space point gets its union type from as well.
+     *
+     * @var array<string,mixed>
+     */
+    public const PAGED_READ_TOOL_SCHEMA = [
+        'properties' => [
+            'dimensionSpacePoint' => self::DIMENSION_SPACE_POINT,
+            'cursor' => self::CURSOR,
+        ],
+    ];
+
     private function __construct()
     {
     }
