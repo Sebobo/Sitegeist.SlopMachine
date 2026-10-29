@@ -30,6 +30,7 @@ use Neos\Flow\Security\Context as SecurityContext;
 class SharedWorkspaceWritingCapabilities
 {
     use PropertyValueConversionTrait;
+    use NodeStatePropertyTrait;
 
     public function __construct(
         protected SharedWorkspaceContextFactory $sharedWorkspaceContextFactory,
@@ -353,6 +354,7 @@ class SharedWorkspaceWritingCapabilities
                         'success' => true,
                         'message' => null,
                     ];
+                    $this->reportEffectivePropertyValues($node, $propertyValues, $result);
                 } catch (\Throwable $exception) {
                     $result = [
                         'success' => false,
@@ -413,6 +415,10 @@ class SharedWorkspaceWritingCapabilities
     {
         $nodeType = $node->getNodeType();
         foreach ($properties as $propertyName => $propertyValue) {
+            if ($this->isNodeStateProperty($propertyName)) {
+                $this->setNodeStateProperty($node, $propertyName, $propertyValue);
+                continue;
+            }
             $expectedType = $nodeType->getPropertyType($propertyName);
             if ($expectedType === 'reference' || $expectedType === 'references') {
                 throw new \Exception('References must be set as references, not properties.');
@@ -443,7 +449,9 @@ class SharedWorkspaceWritingCapabilities
         $differences = [];
         $effectiveValues = [];
         foreach ($requestedValues as $propertyName => $requestedValue) {
-            $effectiveValue = $node->getProperty($propertyName);
+            $effectiveValue = $this->isNodeStateProperty($propertyName)
+                ? $this->getNodeStateProperty($node, $propertyName)
+                : $node->getProperty($propertyName);
             // Assets, dates and other objects can neither be compared here nor serialised
             // into the response, so only scalar values take part in the comparison.
             if (!is_scalar($effectiveValue) && $effectiveValue !== null) {

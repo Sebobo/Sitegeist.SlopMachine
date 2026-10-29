@@ -99,6 +99,7 @@ final class SchemaLibrary
     public const SET_NODE_PROPERTIES_SCHEMA = [
         'type' => 'object',
         'description' => 'A single SetNodeProperties command. References must not be set with this, use SetNodeReferences instead.
+            The node state is written the same way: hidden and hiddenInIndex take true or false, hiddenBeforeDateTime and hiddenAfterDateTime take a parseable date or null, and they change the visibility of the node itself rather than a property of it.
             Property values can be stored differently than requested, because a node type or a Neos signal may adjust a value while it is being set. The best known case is uriPathSegment, which Neos makes unique among the sibling documents of a node, counting removed siblings as well, so it can come back with a numeric suffix. When a value differs the response carries a message naming each difference and an effectivePropertyValues map of the values that were actually stored; success stays true, because the write did happen and a retry would create a duplicate.',
         'properties' => [
             'type' => [
