@@ -69,6 +69,7 @@ final class SchemaLibrary
             References must be set via the references property, as a single node aggregate id or a list of them per reference name.
             If the references property is set, it must not be empty. If no references are to be set, omit the property completely.
             Remember that tethered children don\'t need to be created explicitly as they are created automatically created together with their parent.
+            The initialPropertyValues are validated against the validators the node type declares for those properties before anything is created: a value that violates one is rejected with a message naming the property and the limit, and no node is created.
             Returns the nodeAggregateId and nodeName of the created node as well as the nodeAggregateIds of the tethered descendants that were created additionally.
             Property values can be stored differently than requested, because a node type or a Neos signal may adjust a value while it is being set. The best known case is uriPathSegment, which Neos makes unique among the sibling documents of a node, counting removed siblings as well, so it can come back with a numeric suffix. When a value differs the response carries a message naming each difference and an effectivePropertyValues map of the values that were actually stored; success stays true, because the write did happen and a retry would create a duplicate.
             Example:
@@ -100,6 +101,7 @@ final class SchemaLibrary
         'type' => 'object',
         'description' => 'A single SetNodeProperties command. References must not be set with this, use SetNodeReferences instead.
             The node state is written the same way: hidden and hiddenInIndex take true or false, hiddenBeforeDateTime and hiddenAfterDateTime take a parseable date or null, and they change the visibility of the node itself rather than a property of it.
+            The property values are validated against the validators the node type declares for those properties: a value that violates one is rejected with a message naming the property and the limit, and nothing is written. The limits are listed per property in the validation field of the node type schema.
             Property values can be stored differently than requested, because a node type or a Neos signal may adjust a value while it is being set. The best known case is uriPathSegment, which Neos makes unique among the sibling documents of a node, counting removed siblings as well, so it can come back with a numeric suffix. When a value differs the response carries a message naming each difference and an effectivePropertyValues map of the values that were actually stored; success stays true, because the write did happen and a retry would create a duplicate.',
         'properties' => [
             'type' => [

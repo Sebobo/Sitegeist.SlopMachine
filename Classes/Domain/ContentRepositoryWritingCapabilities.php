@@ -8,6 +8,7 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\ToolAnnotations;
 use Neos\ContentRepository\Domain\Model\Node;
+use Neos\ContentRepository\Domain\Model\NodeType;
 use Neos\ContentRepository\Domain\Service\NodeTypeManager;
 use Neos\ContentRepository\Domain\Utility\NodePaths;
 use Neos\Flow\Annotations as Flow;
@@ -26,6 +27,7 @@ class ContentRepositoryWritingCapabilities
         protected NodeTypeManager $nodeTypeManager,
         protected SecurityContext $securityContext,
         protected PropertyMapper $propertyMapper,
+        protected NodePropertyValidation $nodePropertyValidation,
     ) {
     }
 
@@ -249,6 +251,9 @@ class ContentRepositoryWritingCapabilities
             ) {
                 try {
                     $parentNode = $this->requireNode($contentContext, $parentNodeAggregateId);
+                    // Before the node exists: a rejected command that left a half created node
+                    // behind would invite a retry that creates a duplicate.
+                    $this->requireValidPropertyValues($this->nodeTypeManager->getNodeType($nodeTypeName), $initialPropertyValues);
                     /** @var Node $createdNode */
                     $createdNode = $parentNode->createNode(
                         $nodeName ?: NodePaths::generateRandomNodeName(),
@@ -321,6 +326,7 @@ class ContentRepositoryWritingCapabilities
             ) {
                 try {
                     $node = $this->requireNode($contentContext, $nodeAggregateId);
+                    $this->requireValidPropertyValues($node->getNodeType(), $propertyValues);
                     $this->setProperties($node, $propertyValues);
 
                     $result = [
@@ -416,6 +422,30 @@ class ContentRepositoryWritingCapabilities
             $propertyValue = $this->convertPropertyValue($propertyName, $expectedType, $propertyValue);
             $node->setProperty($propertyName, $propertyValue);
         }
+    }
+
+    /**
+     * Rejects a write whose values violate a validator declared by the node type.
+     *
+     * The content repository does not validate property values - it casts a value to the
+     * declared property type and stops - and neither did this tool. A value the Neos UI would
+     * refuse to save was therefore stored without complaint and only surfaced later, when a
+     * human opened the node in the editor and could not save it.
+     *
+     * @param array<string,mixed> $propertyValues
+     */
+    private function requireValidPropertyValues(NodeType $nodeType, array $propertyValues): void
+    {
+        $violations = $this->nodePropertyValidation->violations($nodeType, $propertyValues);
+        if ($violations === []) {
+            return;
+        }
+
+        throw new \RuntimeException(\sprintf(
+            'The property values do not satisfy the validators of node type %s: %s',
+            $nodeType->getName(),
+            \implode(' ', $violations),
+        ));
     }
 
     /**
