@@ -429,6 +429,10 @@ class SharedWorkspaceReadingCapabilities
                 )
             ),
             'nodeTypeName' => $node->getNodeTypeName(),
+            'hidden' => $node->isHidden(),
+            'hiddenInIndex' => $node->isHiddenInIndex(),
+            'hiddenBeforeDateTime' => $node->getHiddenBeforeDateTime()?->format(\DateTimeInterface::ATOM),
+            'hiddenAfterDateTime' => $node->getHiddenAfterDateTime()?->format(\DateTimeInterface::ATOM),
         ];
     }
 

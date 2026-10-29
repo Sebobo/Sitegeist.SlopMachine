@@ -111,7 +111,7 @@ class ContentRepositoryReadingCapabilities
                     $result = [
                         'uri' => self::FIND_CHILDREN_URI,
                         'name' => 'Child nodes',
-                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource.',
+                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource. The visibility state of the node is reported next to the properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type, but SetNodeProperties writes them and they are what a hide or an unhide is read back through.',
                         'mimeType' => 'application/json',
                         'returnedCount' => $page['returnedCount'],
                         'truncated' => $page['truncated'],
@@ -238,7 +238,7 @@ class ContentRepositoryReadingCapabilities
                     $result = [
                         'uri' => self::FIND_CONTENT_URI,
                         'name' => 'Content of a document',
-                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource.',
+                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource. The visibility state of the node is reported next to the properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type, but SetNodeProperties writes them and they are what a hide or an unhide is read back through.',
                         'mimeType' => 'application/json',
                         'returnedCount' => $page['returnedCount'],
                         'truncated' => $page['truncated'],
@@ -339,7 +339,7 @@ class ContentRepositoryReadingCapabilities
                     $result = [
                         'uri' => self::FIND_DOCUMENTS_URI,
                         'name' => 'Documents below a node',
-                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource.',
+                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource. The visibility state of the node is reported next to the properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type, but SetNodeProperties writes them and they are what a hide or an unhide is read back through.',
                         'mimeType' => 'application/json',
                         'returnedCount' => $page['returnedCount'],
                         'truncated' => $page['truncated'],
@@ -448,7 +448,7 @@ class ContentRepositoryReadingCapabilities
                     $result = [
                         'uri' => self::FIND_DESCENDANTS_URI,
                         'name' => 'Descendant nodes',
-                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource.',
+                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource. The visibility state of the node is reported next to the properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type, but SetNodeProperties writes them and they are what a hide or an unhide is read back through.',
                         'mimeType' => 'application/json',
                         'returnedCount' => $page['returnedCount'],
                         'truncated' => $page['truncated'],
@@ -609,6 +609,10 @@ class ContentRepositoryReadingCapabilities
                 )
             ),
             'nodeTypeName' => $node->getNodeTypeName(),
+            'hidden' => $node->isHidden(),
+            'hiddenInIndex' => $node->isHiddenInIndex(),
+            'hiddenBeforeDateTime' => $node->getHiddenBeforeDateTime()?->format(\DateTimeInterface::ATOM),
+            'hiddenAfterDateTime' => $node->getHiddenAfterDateTime()?->format(\DateTimeInterface::ATOM),
         ];
     }
 
