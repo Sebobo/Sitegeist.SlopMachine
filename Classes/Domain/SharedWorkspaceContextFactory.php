@@ -6,7 +6,6 @@ namespace Sitegeist\SlopMachine\Domain;
 
 use Neos\ContentRepository\Domain\Model\Workspace;
 use Neos\ContentRepository\Domain\Repository\WorkspaceRepository;
-use Neos\ContentRepository\Domain\Service\ContentDimensionPresetSourceInterface;
 use Neos\Flow\Annotations as Flow;
 use Neos\Neos\Domain\Service\ContentContext;
 use Neos\Neos\Domain\Service\ContentContextFactory;
@@ -33,7 +32,7 @@ class SharedWorkspaceContextFactory
      */
     public function __construct(
         protected ContentContextFactory $contentContextFactory,
-        protected ContentDimensionPresetSourceInterface $contentDimensionPresetSource,
+        protected DimensionSpacePointResolver $dimensionSpacePointResolver,
         protected WorkspaceRepository $workspaceRepository,
         protected AgentWorkspaceResolver $agentWorkspaceResolver,
         protected array $agentSettings,
@@ -92,11 +91,7 @@ class SharedWorkspaceContextFactory
     {
         $workspace = $this->getWorkspace();
 
-        $dimensions = [];
-        foreach ($dimensionSpacePoint as $dimensionName => $dimensionValue) {
-            $dimensions[$dimensionName] = $this->contentDimensionPresetSource
-                ->getAllPresets()[$dimensionName]['presets'][$dimensionValue]['values'];
-        }
+        $dimensions = $this->dimensionSpacePointResolver->resolve($dimensionSpacePoint);
 
         /** @var ContentContext $contentContext */
         $contentContext = $this->contentContextFactory->create([
