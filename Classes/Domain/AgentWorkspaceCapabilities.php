@@ -42,10 +42,12 @@ class AgentWorkspaceCapabilities
     /**
      * Removes one or more nodes - including their whole subtree - from your own workspace.
      *
-     * This is a permanent deletion in your own workspace: it is not a removal that a human would
-     * see as a pending "remove" marker, the nodes are gone. If you only want to get rid of your
-     * own edits and keep the content as it was in the base workspace, use DiscardChanges
-     * instead - that reverts instead of deleting.
+     * A node that was created in this workspace is gone with its whole subtree: the rows of
+     * its children are removed with it, so that no child is left behind below a parent that
+     * does not exist any more. The reviewer does not see it at all.
+     *
+     * A node that exists in the base workspace is only marked as removed: the deletion stays
+     * a change that a reviewer has to publish.
      *
      * Node types of tethered children do not have to be passed, removing a parent removes them.
      *
@@ -57,8 +59,9 @@ class AgentWorkspaceCapabilities
     #[McpTool(
         name: 'RemoveNode',
         description: 'Removes one or more nodes, including all of their descendants, from your own workspace.
-            This deletes content - it is not a soft removal that a reviewer would see as pending.
+            A node that you created in this workspace is deleted with its whole subtree - it is not a soft removal that a reviewer would see as pending.
             Use it only for content you created yourself that must not end up in the review workspace.
+            A node that exists in the base workspace is only marked as removed - that deletion is a change a reviewer has to publish.
             To undo your own edits and keep the content as it was in the base workspace, use DiscardChanges instead.
             If more than one node is affected, pass all nodeAggregateIds in a single call.
             Returns one result entry per requested nodeAggregateId, in the requested order.',
@@ -98,7 +101,7 @@ class AgentWorkspaceCapabilities
                         }
                         NodeRemoval::assertRemovable($node, $workspace);
                         $path = $node->getPath();
-                        $node->remove();
+                        $this->removeNodeFromWorkspace($node);
                         $result[] = [
                             'nodeAggregateId' => $nodeAggregateId,
                             'path' => $path,
@@ -260,7 +263,7 @@ class AgentWorkspaceCapabilities
                                 \sprintf('No node found for nodeAggregateId %s.', $nodeAggregateId)
                             );
                         }
-                        $this->publishingService->discardNodes([$node]);
+                        $this->discardNodeWithItsChildren($node);
                         $result[] = [
                             'nodeAggregateId' => $nodeAggregateId,
                             'success' => true,
@@ -322,5 +325,80 @@ class AgentWorkspaceCapabilities
             'change' => $changeType,
             'lastModificationDateTime' => $lastModificationDateTime->format(\DateTimeInterface::ATOM),
         ];
+    }
+
+    /**
+     * Removes a node from the workspace, without leaving its children behind.
+     *
+     * A node that was created in the workspace is gone with its whole subtree: the rows of
+     * the children are removed with it, so that no child is left below a parent that does
+     * not exist any more.
+     *
+     * A node that exists in the base workspace is only marked as removed: the deletion has
+     * to be published by a reviewer.
+     */
+    private function removeNodeFromWorkspace(NodeInterface $node): void
+    {
+        if ($this->nodeExistsInBaseWorkspace($node)) {
+            $node->remove();
+
+            return;
+        }
+
+        $this->discardNodeWithItsChildren($node);
+    }
+
+    /**
+     * Discards a node without leaving its children behind.
+     *
+     * A node that was created in the workspace is removed when it is discarded, and its
+     * children are removed with it - a child whose parent is gone is an orphan that the
+     * content repository cannot do anything with any more.
+     *
+     * A node that exists in the base workspace is only reverted: its children stay where
+     * they are.
+     */
+    private function discardNodeWithItsChildren(NodeInterface $node): void
+    {
+        if ($this->nodeExistsInBaseWorkspace($node)) {
+            $this->publishingService->discardNode($node);
+
+            return;
+        }
+
+        $nodes = [];
+        $pathPrefix = $node->getPath() . '/';
+        foreach ($this->publishingService->getUnpublishedNodes($node->getWorkspace()) as $candidate) {
+            if (!str_starts_with($candidate->getPath(), $pathPrefix)) {
+                continue;
+            }
+            $nodes[] = $candidate;
+        }
+        // The deepest node first, so that a node is never removed before its children.
+        usort(
+            $nodes,
+            static fn (NodeInterface $left, NodeInterface $right): int => substr_count($right->getPath(), '/') <=> substr_count($left->getPath(), '/')
+        );
+        $nodes[] = $node;
+
+        $this->publishingService->discardNodes($nodes);
+    }
+
+    /**
+     * Whether the node exists in the workspace the workspace of the node is based on.
+     */
+    private function nodeExistsInBaseWorkspace(NodeInterface $node): bool
+    {
+        $baseWorkspace = $node->getWorkspace()->getBaseWorkspace();
+        if (!$baseWorkspace instanceof Workspace) {
+            return false;
+        }
+
+        return $this->nodeDataRepository->findOneByIdentifier(
+            $node->getIdentifier(),
+            $baseWorkspace,
+            $node->getContext()->getDimensions(),
+            false
+        ) instanceof NodeData;
     }
 }
