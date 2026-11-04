@@ -620,6 +620,9 @@ class ContentRepositoryReadingCapabilities
      * An asset property is serialised as the asset it points to. The asset object itself
      * has no public property that identifies it, so the identifier and the title are what
      * tells one asset from another.
+     *
+     * A reference to another node is serialised the same way: the identifier tells where the
+     * node is, the label tells which node it is.
      */
     private function serializePropertyValue(mixed $value): mixed
     {
@@ -628,6 +631,20 @@ class ContentRepositoryReadingCapabilities
                 'id' => $value->getIdentifier(),
                 'title' => $value->getTitle(),
             ];
+        }
+
+        if ($value instanceof Node) {
+            return [
+                'identifier' => $value->getIdentifier(),
+                'label' => $value->getLabel(),
+            ];
+        }
+
+        if (is_array($value)) {
+            return array_map(
+                fn (mixed $entry): mixed => $this->serializePropertyValue($entry),
+                $value
+            );
         }
 
         return $value;
