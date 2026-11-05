@@ -1,0 +1,86 @@
+# The role of the AI agent: a machine identity that works in the content repository over MCP.
+#
+# Every MCP capability is deny-by-default, so each one the agent may use has to be granted here
+# explicitly. The list below is the read-only baseline: an agent that may look, but not write.
+# Grant the writing capabilities explicitly if the agent is supposed to create or change content:
+#
+#   Sitegeist.SlopMachine:Capability.Tool.CreateNodeAggregateWithNode
+#   Sitegeist.SlopMachine:Capability.Tool.SetNodeProperties
+#   Sitegeist.SlopMachine:Capability.Tool.SetNodeReferences
+#   Sitegeist.SlopMachine:Capability.Tool.BulkWriting
+#   Sitegeist.SlopMachine:Capability.Tool.MoveNode
+#   Sitegeist.SlopMachine:Capability.Tool.upload-asset
+#   Sitegeist.SlopMachine:Capability.Tool.RemoveNode
+#   Sitegeist.SlopMachine:Capability.Tool.DiscardChanges
+#   Sitegeist.SlopMachine:Capability.Tool.BulkWriteToSharedWorkspace
+#   Sitegeist.SlopMachine:Capability.Tool.RemoveFromSharedWorkspace
+#
+# The role inherits from Neos.Neos:RestrictedEditor: the agent needs access to internal workspaces
+# to work in its personal workspace, and it must never be able to publish to the live workspace.
+#
+# The agent authenticates with a bearer token, never with a password, so the backend login is
+# denied for this role. The account the agent works as is created with a random password that is
+# never printed (see "agent:createuser"), so there is no credential that could be used to log in.
+roles:
+  'Sitegeist.SlopMachine:McpAgent':
+    label: 'MCP Agent'
+    description: 'Lets a token-authenticated agent read the content repository over /mcp. Read-only by default.'
+    parentRoles: ['Neos.Neos:RestrictedEditor']
+    privileges:
+      # No login with a password: the agent is authenticated by a bearer token.
+      - privilegeTarget: 'Neos.Neos:BackendLogin'
+        permission: DENY
+
+      # Access to the MCP endpoint itself.
+      - privilegeTarget: 'Sitegeist.Pandora:MCP'
+        permission: GRANT
+
+      # Reading the content repository
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-children'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-content'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-documents'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-descendants'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-subtree'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.dimensionspace'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.nodetype-full-schema'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.nodetype-basic-schema'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.query-patterns'
+        permission: GRANT
+
+      # Reading the sites
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.search-sites'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.list-site-urls'
+        permission: GRANT
+
+      # Reading the media
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-asset-collections'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-tags'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-types'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-assets'
+        permission: GRANT
+
+      # Reading the own workspace: what the agent changed so far.
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.ListUnpublishedChanges'
+        permission: GRANT
+
+      # Reading the shared review workspace
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-children-in-shared-workspace'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-content-in-shared-workspace'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-documents-in-shared-workspace'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-descendants-in-shared-workspace'
+        permission: GRANT
