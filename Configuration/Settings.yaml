@@ -10,6 +10,9 @@ Sitegeist:
       # The name must not be the agent's own personal workspace, and the workspace must be based on
       # live; SharedWorkspaceContextFactory refuses anything else.
       #
+      # The workspace is created by "./flow agent:createsharedworkspace", which reads the name from
+      # here - so the command cannot set up a workspace the agent would not use.
+      #
       # Override this per context in Configuration/<Context>/Settings.yaml, because the generated
       # name differs per installation.
       sharedWorkspace: ~
