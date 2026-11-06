@@ -17,7 +17,7 @@ use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Security\Context as SecurityContext;
 
 /**
- * Removal and change management for the agent's own personal workspace.
+ * Removal, publishing and change management for the agent's own personal workspace.
  *
  * Every context comes from Sitegeist.SlopMachine's MCPContentContextFactory, which always
  * resolves the workspace of the Neos user the agent is assigned to. No argument can select a
@@ -37,6 +37,147 @@ class AgentWorkspaceCapabilities
         protected NodeDataRepository $nodeDataRepository,
         protected SecurityContext $securityContext,
     ) {
+    }
+
+    /**
+     * Publishes your own workspace into the workspace it is based on.
+     *
+     * This is the hand-over: it is what an editor does when they are done. The content leaves
+     * your workspace and appears in the workspace you are based on - the shared review workspace,
+     * or the topic workspace you have rebased onto. A human reviews it there and publishes it
+     * further.
+     *
+     * Because it is a real publish and not a copy, your workspace is empty afterwards for what
+     * has been published: ListUnpublishedChanges reports what is left. To correct something you
+     * have already published, change it in your own workspace and publish again - the publish
+     * replaces what is already there.
+     *
+     * @param string[] $nodeAggregateIds The nodes to publish; all unpublished changes by default
+     * @param bool $dryRun Only report what would be published, without publishing anything
+     * @return array<string,mixed>
+     */
+    #[McpTool(
+        name: 'PublishOwnWorkspace',
+        description: 'Publishes your own workspace into the workspace it is based on - the shared review workspace, or the
+            topic workspace you have rebased onto. This is the hand-over: it is exactly what an editor does when they are
+            done, so the content leaves your workspace and appears in the workspace you are based on, where a human reviews
+            it and publishes it further.
+            Your workspace is empty afterwards for what has been published - ListUnpublishedChanges reports what is left.
+            To correct something you have already published, change it in your own workspace and publish again: the
+            publish replaces what is already there.
+            Pass nodeAggregateIds to publish only some of your changes, or nothing to publish all of them. With dryRun set
+            to true nothing is published and you get the list of what would be.
+            The workspace you are based on is never the live workspace: the agent does not publish to live, a human does.',
+        annotations: new ToolAnnotations(
+            readOnlyHint: false,
+            destructiveHint: false,
+            idempotentHint: false,
+            openWorldHint: false,
+        )
+    )]
+    public function publishOwnWorkspace(
+        #[Schema(
+            type: 'array',
+            description: 'The node aggregate ids to publish, without any prefix. May be empty to publish every unpublished change.',
+            items: ['type' => 'string'],
+        )]
+        array $nodeAggregateIds = [],
+        #[Schema(type: 'boolean', description: 'Only report what would be published, without publishing anything.')]
+        bool $dryRun = false,
+    ): array {
+        $result = [];
+        $this->securityContext->withoutAuthorizationChecks(
+            function () use ($nodeAggregateIds, $dryRun, &$result) {
+                try {
+                    $personalWorkspace = $this->agentWorkspaceResolver->getWorkspace();
+                    $targetWorkspace = $personalWorkspace->getBaseWorkspace();
+                    if (!$targetWorkspace instanceof Workspace) {
+                        throw new \RuntimeException(
+                            'Your workspace has no base workspace, so there is nothing to publish into.'
+                        );
+                    }
+                    if (!$targetWorkspace->isInternalWorkspace()) {
+                        throw new \RuntimeException(\sprintf(
+                            'Your workspace is based on "%s", which is not an internal workspace. The agent publishes into'
+                            . ' the shared review workspace or into a topic workspace of it - never into "live" and never'
+                            . ' into a personal workspace.',
+                            $targetWorkspace->getName()
+                        ));
+                    }
+
+                    $unpublishedNodes = $this->publishingService->getUnpublishedNodes($personalWorkspace);
+                    $selectedNodes = $this->selectNodes($unpublishedNodes, $nodeAggregateIds);
+
+                    if (!$dryRun) {
+                        foreach ($selectedNodes as $node) {
+                            $this->publishingService->publishNode($node, $targetWorkspace);
+                        }
+                    }
+
+                    $result = [
+                        'success' => true,
+                        'published' => \count($selectedNodes),
+                        'dryRun' => $dryRun,
+                        'workspace' => $personalWorkspace->getName(),
+                        'targetWorkspace' => $targetWorkspace->getName(),
+                        'remainingUnpublishedChanges' => $dryRun
+                            ? \count($unpublishedNodes)
+                            : $this->publishingService->getUnpublishedNodesCount($personalWorkspace),
+                        'nodes' => $this->describeNodes($selectedNodes),
+                    ];
+                } catch (\Throwable $exception) {
+                    $result = [
+                        'success' => false,
+                        'message' => $exception->getMessage(),
+                    ];
+                }
+            }
+        );
+
+        return $result;
+    }
+
+    /**
+     * Picks the nodes to publish: the given ones, or all of them if none are given.
+     *
+     * @param NodeInterface[] $unpublishedNodes
+     * @param string[] $nodeAggregateIds
+     * @return NodeInterface[]
+     */
+    private function selectNodes(array $unpublishedNodes, array $nodeAggregateIds): array
+    {
+        if ($nodeAggregateIds === []) {
+            return $unpublishedNodes;
+        }
+
+        $selected = [];
+        foreach ($unpublishedNodes as $node) {
+            if (\in_array($node->getIdentifier(), $nodeAggregateIds, true)) {
+                $selected[] = $node;
+            }
+        }
+
+        return $selected;
+    }
+
+    /**
+     * Describes the published nodes for the result.
+     *
+     * @param NodeInterface[] $nodes
+     * @return array<int,array<string,mixed>>
+     */
+    private function describeNodes(array $nodes): array
+    {
+        $described = [];
+        foreach ($nodes as $node) {
+            $described[] = [
+                'nodeAggregateId' => $node->getIdentifier(),
+                'path' => $node->getPath(),
+                'nodeTypeName' => $node instanceof Node ? $node->getNodeTypeName() : null,
+            ];
+        }
+
+        return $described;
     }
 
     /**

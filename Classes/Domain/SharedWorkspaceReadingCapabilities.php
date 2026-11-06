@@ -15,14 +15,17 @@ use Neos\Flow\Security\Context as SecurityContext;
 use Neos\Media\Domain\Model\Asset;
 
 /**
- * Read access to the shared review workspace.
+ * Read access to the workspace the agent hands its work over to.
+ *
+ * That is the shared review workspace, or the topic workspace the agent is working on - it is
+ * never chosen by the agent in a tool argument (@see SharedWorkspaceContextFactory).
  *
  * Your own read tools (find-children, find-descendants, find-subtree) only ever see your own
- * workspace. Before you hand work over you need to know what is already in the review workspace,
- * otherwise a second run creates the same page twice.
+ * workspace. Before you hand work over you need to know what is already in the workspace you hand
+ * over to, otherwise a second run creates the same page twice.
  *
- * Note that the content of the review workspace and of your own workspace overlap: your workspace
- * is based on the review workspace, so nodes that exist there are visible here under the same
+ * Note that the content of that workspace and of your own workspace overlap: your workspace
+ * is based on it, so nodes that exist there are visible here under the same
  * node aggregate ids. Only your own unpublished changes are missing from this view - use
  * ListUnpublishedChanges for those.
  */
@@ -45,7 +48,8 @@ class SharedWorkspaceReadingCapabilities
     #[Schema(properties: McpSchemaLibrary::PAGED_READ_TOOL_SCHEMA['properties'])]
     #[McpTool(
         name: 'find-children-in-shared-workspace',
-        description: 'A list of all child nodes of a given parent in the shared review workspace, optionally filtered by node type.
+        description: 'A list of all child nodes of a given parent in the workspace you hand over to - the shared review
+            workspace, or the topic workspace you are working on - optionally filtered by node type.
             This is your view of the workspace humans review, and the way to find out what already exists there
             before you create anything - creating content that is already there produces duplicates.
             The nodeTypeNames parameter accepts a single node type or a comma separated list, for example
@@ -112,8 +116,9 @@ class SharedWorkspaceReadingCapabilities
     #[Schema(properties: McpSchemaLibrary::PAGED_READ_TOOL_SCHEMA['properties'])]
     #[McpTool(
         name: 'find-content-in-shared-workspace',
-        description: 'The content of a single document in the shared review workspace - its content collections, the layout
-            roots below them and everything below those.
+        description: 'The content of a single document in the workspace you hand over to - the shared review workspace, or the
+            topic workspace you are working on - its content collections, the layout roots below them and everything
+            below those.
             This is the scoped counterpart of find-descendants-in-shared-workspace: a document owns content of its own and
             it may also parent other documents, and each of those brings its own content with it. The recursive query
             mixes both, so on a page with child pages it returns the content of every one of them.
@@ -190,7 +195,8 @@ class SharedWorkspaceReadingCapabilities
     #[Schema(properties: McpSchemaLibrary::PAGED_READ_TOOL_SCHEMA['properties'])]
     #[McpTool(
         name: 'find-documents-in-shared-workspace',
-        description: 'The documents below a node in the shared review workspace, without their content.
+        description: 'The documents below a node in the workspace you hand over to - the shared review workspace, or the topic
+            workspace you are working on - without their content.
             By default only the direct child documents are returned, which is the cheap case. With recursive set to
             true, every document in the subtree is returned - that is the query that used to need
             find-descendants-in-shared-workspace with a document filter, and it is expensive on a site with many pages.
@@ -263,8 +269,9 @@ class SharedWorkspaceReadingCapabilities
     #[Schema(properties: McpSchemaLibrary::PAGED_READ_TOOL_SCHEMA['properties'])]
     #[McpTool(
         name: 'find-descendants-in-shared-workspace',
-        description: 'A list of all descendant nodes of a given ancestor in the shared review workspace, optionally
-            filtered by node type. Use this when you do not yet know the structure of the review workspace, or when
+        description: 'A list of all descendant nodes of a given ancestor in the workspace you hand over to - the shared review
+            workspace, or the topic workspace you are working on - optionally
+            filtered by node type. Use this when you do not yet know the structure of that workspace, or when
             you want to see how a whole subtree looks there. A descendant is any node below the given one, not the
             node itself. It is an expensive query - if you already know the parent to look at, prefer
             find-children-in-shared-workspace.

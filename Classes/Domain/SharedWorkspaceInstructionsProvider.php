@@ -7,8 +7,8 @@ namespace Sitegeist\SlopMachine\Domain;
 use Sitegeist\Pandora\Instruction\InstructionsProvider;
 
 /**
- * Explains the workspace split to the agent: it works in its own workspace and hands work over to
- * a shared review workspace that humans publish.
+ * Explains the workspace split to the agent: it works in its own workspace and publishes what it
+ * has done into a shared review workspace that humans publish further.
  *
  * Registered next to ContentRepositoryInstructionsProvider for the same
  * role; the registry concatenates the providers, so this text lands after the generic content
@@ -33,9 +33,15 @@ final class SharedWorkspaceInstructionsProvider implements InstructionsProvider
         }
 
         try {
-            $sharedWorkspaceName = $this->sharedWorkspaceContextFactory->getWorkspaceName();
+            $sharedWorkspaceName = $this->sharedWorkspaceContextFactory->getSharedWorkspaceName();
         } catch (\Throwable) {
             $sharedWorkspaceName = '(unresolved)';
+        }
+
+        try {
+            $topicWorkspaceName = $this->sharedWorkspaceContextFactory->getTopicWorkspace()?->getName();
+        } catch (\Throwable) {
+            $topicWorkspaceName = null;
         }
 
         $workspaceDescription = $baseWorkspaceName === null
@@ -46,65 +52,58 @@ final class SharedWorkspaceInstructionsProvider implements InstructionsProvider
                 $baseWorkspaceName
             );
 
+        $topicDescription = $topicWorkspaceName === null
+            ? 'You are not working on a topic at the moment.'
+            : \sprintf('You are working on the topic workspace "%s".', $topicWorkspaceName);
+
         return 'You work in two workspaces, and the difference matters:
             ' . $workspaceDescription . ' All of your regular read and write tools (find-children, find-descendants,
             find-subtree, BulkWriting, CreateNodeAggregateWithNode, SetNodeProperties, SetNodeReferences) address your
             own workspace: they write into it, and what they read is your own workspace\'s view. They cannot address the
             shared review workspace or the live workspace.
-            The shared review workspace is "' . $sharedWorkspaceName . '". Humans review and publish it. You never
-            address the live workspace, and no tool lets you publish anything.
-            - Do the work in your own workspace first, and hand it over in finished packages. Write into
-              the shared review workspace when a coherent unit is really done - one finished page, say,
-              not every single node edit. Humans review what lands there, so a package should be
+            The shared review workspace is "' . $sharedWorkspaceName . '". Humans review and publish it.
+            ' . $topicDescription . ' The workspace you publish into is the one you are based on: the shared review
+            workspace, unless you work on a topic, then the topic workspace - a branch of the shared review workspace.
+            Two agents - or an agent and a human - working on different topics then do not write over each other.
+            - To create a topic workspace, call CreateTopicWorkspace with the topic, for example
+              "Zahnzusatzversicherung". The name of the workspace is derived from the topic, so the same topic always
+              maps to the same workspace: calling it again for a topic that has a workspace already returns that
+              workspace instead of creating a second one. The workspace is not active after the call.
+            - To work on a topic, call RebaseOwnWorkspace with the name the topic workspace has. It also takes the name
+              of the shared review workspace, to go back to it - and nothing else. Rebase before you start working on
+              the topic, not in the middle of it: your own unpublished changes stay in your workspace, but they are
+              relative to the new base from now on, and content that only existed in the previous base is no longer
+              part of your view.
+            - Do the work in your own workspace, and hand it over when a coherent unit is really done - one finished
+              page, say, not every single node edit. Humans review what lands there, so a package should be
               something they can judge as a whole.
-            - To hand a package over, use BulkWriteToSharedWorkspace. It takes the same commands as
-              BulkWriting, so nothing about the writing dialect changes: read your own workspace for the
-              values and issue the same commands against the shared workspace. A create command may carry
-              the nodeAggregateId you want the new node to have, and the tool honours it, so a whole tree
-              can be planned with your own ids - but only if those ids are not taken in the shared review
-              workspace yet. An id that already exists there is reported as failed, and you must not reuse
-              the id of a node you created in your own workspace: that node does not exist in the shared
-              review workspace, so you can only attach new content below nodes that are already published
-              there.
-            - What your own read tools can see of the shared review workspace depends on the base workspace
-              named above, and ListUnpublishedChanges reports it as baseWorkspace. If it is the shared review
-              workspace, the shared content shows through in your own read tools under the same node aggregate
-              ids, and find-subtree reads a shared node directly: ask for it by its id and you get its own
-              properties back. If it is anything else, the shared content is invisible to your own read tools:
-              read the shared review workspace through find-children-in-shared-workspace and
-              find-descendants-in-shared-workspace instead. Hand a package over once, into the shared review
-              workspace, and never write the same content into both.
-            - To read the shared review workspace, use find-children-in-shared-workspace or
-              find-descendants-in-shared-workspace. Neither of them returns the node you start from, only the
-              nodes below it, so to learn the own properties of a single node in the shared review workspace,
-              look for it among the children of its parent. Check the shared review workspace before you hand
-              a package over, or you will create content that already exists there. Compare titles as well
-              as uriPathSegment values: a node whose requested uriPathSegment was taken by a sibling is
-              stored with a numeric suffix and is easy to miss when you filter for the exact value.
-            - If you already handed something over and noticed a mistake afterwards, do not try to revert:
-              write the corrected content into your own workspace first, then hand it over again.
-              BulkWriteToSharedWorkspace accepts the same Create/Set/Bulk commands for the same node
-              aggregate ids and overwrites the offending values; the audit trail in the shared
-              workspace carries both the wrong write and the corrected one. Use
-              RemoveFromSharedWorkspace only when the node itself has to disappear (a duplicate
-              that should never have existed, an entirely wrong node), not as a general undo.
-            - To remove content from the shared review workspace, use RemoveFromSharedWorkspace. That is a permanent
-              deletion in a workspace humans work in, so read it first and remove the smallest possible node. There is
-              no undo for it, which is another reason to hand over only finished packages.
+            - To hand a package over, call PublishOwnWorkspace. It is exactly what an editor does when they are
+              done: the content leaves your workspace and appears in the workspace you are based on, where a human
+              reviews it and publishes it further. Pass no node aggregate ids to publish everything you have, or the
+              ids of the nodes you want to publish. With dryRun set to true nothing is published and you get the
+              list of what would be.
+            - A publish empties your workspace for what has been published: ListUnpublishedChanges reports what is
+              left. Your own read tools still see the published content, because it is inherited from the workspace
+              you are based on - under the same node aggregate ids.
+            - To correct something you have already published, change it in your own workspace and publish it again:
+              the publish replaces what is already there. Do not try to revert it in the workspace you published into.
             - To remove content from your own workspace, use RemoveNode. That is also a permanent deletion; use it for
-              content you created yourself that must not end up in the review workspace.
+              content you created yourself that must not end up in the workspace you publish into.
             - Both removal tools only accept nodes that belong to the workspace they address. A node you did not
               create there - an inherited, already published node - is refused, and removing it is not what you want
               in the first place: in your own workspace, DiscardChanges restores an edited node to its published state
               instead of deleting it.
+            - To remove content from the workspace you publish into, use RemoveFromSharedWorkspace. That is a permanent
+              deletion in a workspace humans work in, so read it first and remove the smallest possible node. There is
+              no undo for it, which is another reason to hand over only finished packages.
             - To see everything you changed in your own workspace, use ListUnpublishedChanges. It reports the difference
-              between your workspace and the workspace it is based on, which is the same list of changes you would hand
-              over. This is also how you compare your work with the review workspace.
+              between your workspace and the workspace it is based on, which is the same list of changes you would
+              publish.
             - To undo your own changes, use DiscardChanges. It restores content to its state in the base workspace,
               which is the opposite of RemoveNode: reverting a node you created removes it, reverting a node you edited
               restores it. Prefer DiscardChanges when you are unsure, and prefer an explicit list of node aggregate ids
               over discardAll.
-            None of these tools publish anything. Handing work over means writing it into the shared review workspace;
-            a human decides whether it goes live.';
+            You never publish into the live workspace, and you never publish into a workspace you are not based on.
+            The only publish you can do is into the workspace you are based on; a human decides whether it goes live.';
     }
 }

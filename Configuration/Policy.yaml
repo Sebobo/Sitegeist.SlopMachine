@@ -12,8 +12,10 @@
 #   Sitegeist.SlopMachine:Capability.Tool.upload-asset
 #   Sitegeist.SlopMachine:Capability.Tool.RemoveNode
 #   Sitegeist.SlopMachine:Capability.Tool.DiscardChanges
-#   Sitegeist.SlopMachine:Capability.Tool.BulkWriteToSharedWorkspace
 #   Sitegeist.SlopMachine:Capability.Tool.RemoveFromSharedWorkspace
+#   Sitegeist.SlopMachine:Capability.Tool.PublishOwnWorkspace
+#   Sitegeist.SlopMachine:Capability.Tool.CreateTopicWorkspace
+#   Sitegeist.SlopMachine:Capability.Tool.RebaseOwnWorkspace
 #
 # The role inherits from Neos.Neos:RestrictedEditor: the agent needs access to internal workspaces
 # to work in its personal workspace, and it must never be able to publish to the live workspace.

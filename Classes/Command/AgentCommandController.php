@@ -76,7 +76,7 @@ class AgentCommandController extends CommandController
     {
         if ($workspace === null) {
             try {
-                $workspace = $this->sharedWorkspaceContextFactory->getWorkspaceName();
+                $workspace = $this->sharedWorkspaceContextFactory->getSharedWorkspaceName();
             } catch (\RuntimeException $exception) {
                 $this->outputLine('<error>%s</error>', [$exception->getMessage()]);
                 $this->quit(1);
@@ -212,6 +212,16 @@ class AgentCommandController extends CommandController
             return;
         }
 
+        if ($currentBaseWorkspace instanceof Workspace
+            && $this->sharedWorkspaceContextFactory->isTopicWorkspace($currentBaseWorkspace)) {
+            $this->outputLine(
+                '<comment>The personal workspace "%s" works on the topic workspace "%s", so it stays based on it.</comment>',
+                [$personalWorkspaceName, $currentBaseWorkspace->getName()]
+            );
+
+            return;
+        }
+
         $personalWorkspace->setBaseWorkspace($sharedWorkspace);
         $this->workspaceRepository->update($personalWorkspace);
 
@@ -244,7 +254,7 @@ class AgentCommandController extends CommandController
     private function resolveSharedWorkspaceName(): ?string
     {
         try {
-            return $this->sharedWorkspaceContextFactory->getWorkspaceName();
+            return $this->sharedWorkspaceContextFactory->getSharedWorkspaceName();
         } catch (\RuntimeException) {
             return null;
         }
