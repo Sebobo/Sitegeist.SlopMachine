@@ -1,0 +1,25 @@
+Neos:
+  Neos:
+    modules:
+      administration:
+        submodules:
+          # The module of the agents: the instructions the agents are told, and the entries
+          # the administrators of the installation write themselves.
+          agentinstructions:
+            label: 'Agent instructions'
+            controller: 'Sitegeist\SlopMachine\Controller\AgentInstructionsController'
+            description: 'The instructions the MCP agents are told'
+            icon: 'fas fa-robot'
+            mainStylesheet: 'Lite'
+            privilegeTarget: 'Sitegeist.SlopMachine:Backend.AgentInstructions'
+            additionalResources:
+              styleSheets:
+                - 'resource://Sitegeist.SlopMachine/Public/Styles/Module.css'
+              javaScripts:
+                - 'resource://Sitegeist.SlopMachine/Public/Scripts/htmx.min.js'
+
+    userInterface:
+      translation:
+        autoInclude:
+          Sitegeist.SlopMachine:
+            - 'Main'

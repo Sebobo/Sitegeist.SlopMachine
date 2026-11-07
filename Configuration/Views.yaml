@@ -1,0 +1,7 @@
+# The module of the agents is rendered with Fusion, not with a template of the backend.
+- requestFilter: 'isPackage("Sitegeist.SlopMachine") && isController("AgentInstructions")'
+  viewObjectName: 'Neos\Fusion\View\FusionView'
+  options:
+    fusionPathPatterns:
+      - 'resource://Neos.Fusion/Private/Fusion'
+      - 'resource://Sitegeist.SlopMachine/Private/Fusion'

@@ -35,6 +35,9 @@ class ContentRepositoryStructureCapabilities
 
     /**
      * Moves a node below another node.
+     *
+     * @param array<string,mixed> $command
+     * @return array<string,mixed>
      */
     #[McpTool(
         name: 'MoveNode',
@@ -103,6 +106,7 @@ class ContentRepositoryStructureCapabilities
 
     /**
      * @param array<string,mixed> $payload
+     * @return array<string,mixed>
      */
     private function payload(array $payload): array
     {

@@ -1,0 +1,93 @@
+#
+# The instructions of the selected entry.
+#
+# The entries of the configuration are read-only: they come from the settings of the
+# installation. The entries of the administrators can be edited, deleted and reordered.
+#
+prototype(Sitegeist.SlopMachine:Component.EntryDetail.Entry) < prototype(Neos.Fusion:Component) {
+    @propTypes {
+        @strict = false
+        entry = ${PropTypes.any}
+    }
+
+    entry = ${entry}
+
+    @private {
+        i18n = ${I18n.id('').source('Main').package('Sitegeist.SlopMachine')}
+
+        editUri = Neos.Fusion:UriBuilder {
+            action = 'edit'
+            format = 'htmx'
+            arguments.instruction = ${props.entry.id}
+        }
+        deleteUri = Neos.Fusion:UriBuilder {
+            action = 'delete'
+            format = 'htmx'
+            arguments.instruction = ${props.entry.id}
+        }
+        moveUpUri = Neos.Fusion:UriBuilder {
+            action = 'move'
+            format = 'htmx'
+            arguments {
+                instruction = ${props.entry.id}
+                direction = 'up'
+            }
+        }
+        moveDownUri = Neos.Fusion:UriBuilder {
+            action = 'move'
+            format = 'htmx'
+            arguments {
+                instruction = ${props.entry.id}
+                direction = 'down'
+            }
+        }
+    }
+
+    renderer = afx`
+        <div class="slopmachine-instructions-detail">
+            <h2>{props.entry.title}</h2>
+            <p class="slopmachine-instructions-meta" @if={props.entry.source == 'configuration'}>
+                {private.i18n.id('detail.role').translate()}: {props.entry.role}
+                <br/>
+                {props.entry.provider}
+            </p>
+            <pre class="slopmachine-instructions-text">{props.entry.instructions}</pre>
+
+            <div class="slopmachine-instructions-actions" @if={props.entry.source == 'custom'}>
+                <button
+                    class="neos-button"
+                    hx-get={private.editUri}
+                    hx-target="#slopmachine-agent-instructions"
+                    hx-swap="outerHTML"
+                >
+                    <i class="fas fa-pen icon-black"></i> {private.i18n.id('action.edit').translate()}
+                </button>
+                <button
+                    class="neos-button"
+                    hx-post={private.moveUpUri}
+                    hx-target="#slopmachine-agent-instructions"
+                    hx-swap="outerHTML"
+                >
+                    <i class="fas fa-arrow-up icon-black"></i> {private.i18n.id('action.moveUp').translate()}
+                </button>
+                <button
+                    class="neos-button"
+                    hx-post={private.moveDownUri}
+                    hx-target="#slopmachine-agent-instructions"
+                    hx-swap="outerHTML"
+                >
+                    <i class="fas fa-arrow-down icon-black"></i> {private.i18n.id('action.moveDown').translate()}
+                </button>
+                <button
+                    class="neos-button neos-button-danger"
+                    hx-post={private.deleteUri}
+                    hx-confirm={private.i18n.id('action.deleteConfirm').translate()}
+                    hx-target="#slopmachine-agent-instructions"
+                    hx-swap="outerHTML"
+                >
+                    <i class="fas fa-trash icon-white"></i> {private.i18n.id('action.delete').translate()}
+                </button>
+            </div>
+        </div>
+    `
+}

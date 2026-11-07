@@ -23,7 +23,32 @@
 # The agent authenticates with a bearer token, never with a password, so the backend login is
 # denied for this role. The account the agent works as is created with a random password that is
 # never printed (see "agent:createuser"), so there is no credential that could be used to log in.
+privilegeTargets:
+  'Neos\Flow\Security\Authorization\Privilege\Method\MethodPrivilege':
+
+    # The module of the agents: the instructions the agents are told, and the entries the
+    # administrators of the installation write themselves.
+    'Sitegeist.SlopMachine:Backend.AgentInstructions':
+      label: 'Allowed to manage the instructions of the agents'
+      matcher: 'method(Sitegeist\SlopMachine\Controller\AgentInstructionsController->(.*)Action())'
+
+  'Neos\Neos\Security\Authorization\Privilege\ModulePrivilege':
+
+    'Sitegeist.SlopMachine:Backend.Module.Administration.AgentInstructions':
+      label: 'Access to the module of the agent instructions'
+      matcher: 'administration/agentinstructions'
+
 roles:
+  # The module of the agents is for the administrators of the installation: they are the ones
+  # who know what the agents may and may not do.
+  'Neos.Neos:Administrator':
+    privileges:
+      - privilegeTarget: 'Sitegeist.SlopMachine:Backend.Module.Administration.AgentInstructions'
+        permission: GRANT
+
+      - privilegeTarget: 'Sitegeist.SlopMachine:Backend.AgentInstructions'
+        permission: GRANT
+
   'Sitegeist.SlopMachine:McpAgent':
     label: 'MCP Agent'
     description: 'Lets a token-authenticated agent read the content repository over /mcp. Read-only by default.'

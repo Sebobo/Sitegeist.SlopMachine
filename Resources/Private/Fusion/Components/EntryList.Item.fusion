@@ -1,0 +1,34 @@
+#
+# An entry in the list: the title, and - for the entries of the configuration - the role they
+# belong to.
+#
+prototype(Sitegeist.SlopMachine:Component.EntryList.Item) < prototype(Neos.Fusion:Component) {
+    @propTypes {
+        @strict = false
+        entry = ${PropTypes.any}
+        selectedId = ${PropTypes.any}
+    }
+
+    entry = ${entry}
+    selectedId = ${selectedId}
+
+    @private {
+        selectUri = Neos.Fusion:UriBuilder {
+            action = 'select'
+            format = 'htmx'
+            arguments.instruction = ${props.entry.id}
+        }
+    }
+
+    renderer = afx`
+        <li class={['slopmachine-instructions-entry', props.entry.id == props.selectedId ? 'selected' : '']}>
+            <a
+                href={private.selectUri}
+                hx-get={private.selectUri}
+                hx-target="#slopmachine-agent-instructions"
+                hx-swap="outerHTML"
+            >{props.entry.title}</a>
+            <span class="slopmachine-instructions-entry-role">{props.entry.role}</span>
+        </li>
+    `
+}

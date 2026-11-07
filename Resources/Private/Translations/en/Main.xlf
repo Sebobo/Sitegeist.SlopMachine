@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+    <file original="" product="Sitegeist.SlopMachine" source-language="en" datatype="plaintext">
+        <body>
+            <trans-unit id="module.headline">
+                <source>Instructions of the agents</source>
+            </trans-unit>
+            <trans-unit id="module.hint">
+                <source>Your own entries are sent to the agent in one block, after the instructions that are configured for its role.</source>
+            </trans-unit>
+            <trans-unit id="module.hintNotSent">
+                <source>Your own entries are not sent to any agent: the provider that reads them is not configured for a role. Register "Sitegeist\SlopMachine\Domain\AdditionalInstructionsProvider" in the instructions of the role of the agent.</source>
+            </trans-unit>
+            <trans-unit id="list.add">
+                <source>Add entry</source>
+            </trans-unit>
+            <trans-unit id="list.configured">
+                <source>From the configuration</source>
+            </trans-unit>
+            <trans-unit id="list.own">
+                <source>Your own entries</source>
+            </trans-unit>
+            <trans-unit id="detail.empty">
+                <source>Select an entry to see the instructions it holds.</source>
+            </trans-unit>
+            <trans-unit id="detail.role">
+                <source>Role</source>
+            </trans-unit>
+            <trans-unit id="action.edit">
+                <source>Edit</source>
+            </trans-unit>
+            <trans-unit id="action.moveUp">
+                <source>Move up</source>
+            </trans-unit>
+            <trans-unit id="action.moveDown">
+                <source>Move down</source>
+            </trans-unit>
+            <trans-unit id="action.delete">
+                <source>Delete</source>
+            </trans-unit>
+            <trans-unit id="action.deleteConfirm">
+                <source>Delete this entry?</source>
+            </trans-unit>
+            <trans-unit id="action.save">
+                <source>Save</source>
+            </trans-unit>
+            <trans-unit id="action.cancel">
+                <source>Cancel</source>
+            </trans-unit>
+            <trans-unit id="form.createHeadline">
+                <source>New entry</source>
+            </trans-unit>
+            <trans-unit id="form.editHeadline">
+                <source>Change the entry</source>
+            </trans-unit>
+            <trans-unit id="form.title">
+                <source>Title</source>
+            </trans-unit>
+            <trans-unit id="form.instructions">
+                <source>Instructions</source>
+            </trans-unit>
+            <trans-unit id="instruction.error.titleMissing">
+                <source>The entry needs a title.</source>
+            </trans-unit>
+            <trans-unit id="instruction.error.titleTooLong">
+                <source>The title of the entry must not be longer than 255 characters.</source>
+            </trans-unit>
+            <trans-unit id="instruction.error.instructionsMissing">
+                <source>The entry needs instructions.</source>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>

@@ -1,0 +1,56 @@
+#
+# The module of the agents: the entries on the left, the instructions of the selected entry
+# on the right.
+#
+# The module is exchanged as a whole with htmx, so the element that carries the id is the one
+# every action replaces.
+#
+prototype(Sitegeist.SlopMachine:Views.Module) < prototype(Neos.Fusion:Component) {
+    @propTypes {
+        @strict = false
+        configuredEntries = ${PropTypes.any}
+        customEntries = ${PropTypes.any}
+        selectedEntry = ${PropTypes.any}
+        selectedId = ${PropTypes.any}
+        form = ${PropTypes.any}
+        ownEntriesAreSent = ${PropTypes.any}
+    }
+
+    configuredEntries = ${configuredEntries}
+    customEntries = ${customEntries}
+    selectedEntry = ${selectedEntry}
+    selectedId = ${selectedId}
+    form = ${form}
+    ownEntriesAreSent = ${ownEntriesAreSent}
+
+    @private {
+        # The token that Flow asks for on every request that changes something.
+        csrfToken = ${Security.csrfToken()}
+    }
+
+    renderer = afx`
+        <div
+            id="slopmachine-agent-instructions"
+            hx-headers={Json.stringify({'X-Flow-Csrftoken': private.csrfToken})}
+        >
+            <main class="neos-content neos-container-fluid">
+                <div class="neos-row-fluid">
+                    <div class="neos-span4">
+                        <Sitegeist.SlopMachine:Component.EntryList
+                            configuredEntries={props.configuredEntries}
+                            customEntries={props.customEntries}
+                            selectedId={props.selectedId}
+                            ownEntriesAreSent={props.ownEntriesAreSent}
+                        />
+                    </div>
+                    <div class="neos-span8">
+                        <Sitegeist.SlopMachine:Component.EntryDetail
+                            selectedEntry={props.selectedEntry}
+                            form={props.form}
+                        />
+                    </div>
+                </div>
+            </main>
+        </div>
+    `
+}

@@ -1,0 +1,18 @@
+#
+# The actions of the backend module of the agents.
+#
+# Every action renders the whole module: the list of the entries is on the left, the details
+# of the selected entry on the right. The parts are exchanged with htmx, so the module is
+# replaced as a whole - the state of the module (which entry is selected, whether a form is
+# open) is kept by the controller, not by the browser.
+#
+Sitegeist.SlopMachine.AgentInstructionsController {
+    index = Sitegeist.SlopMachine:Views.Module
+    select = Sitegeist.SlopMachine:Views.Module
+    new = Sitegeist.SlopMachine:Views.Module
+    edit = Sitegeist.SlopMachine:Views.Module
+    create = Sitegeist.SlopMachine:Views.Module
+    update = Sitegeist.SlopMachine:Views.Module
+    delete = Sitegeist.SlopMachine:Views.Module
+    move = Sitegeist.SlopMachine:Views.Module
+}

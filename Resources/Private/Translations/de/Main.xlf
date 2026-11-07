@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+    <file original="" product="Sitegeist.SlopMachine" source-language="en" target-language="de" datatype="plaintext">
+        <body>
+            <trans-unit id="module.headline">
+                <source>Instructions of the agents</source>
+                <target>Anweisungen der Agenten</target>
+            </trans-unit>
+            <trans-unit id="module.hint">
+                <source>Your own entries are sent to the agent in one block, after the instructions that are configured for its role.</source>
+                <target>Eigene Einträge werden dem Agenten als ein Block nach den für seine Rolle konfigurierten Anweisungen geschickt.</target>
+            </trans-unit>
+            <trans-unit id="module.hintNotSent">
+                <source>Your own entries are not sent to any agent: the provider that reads them is not configured for a role. Register "Sitegeist\SlopMachine\Domain\AdditionalInstructionsProvider" in the instructions of the role of the agent.</source>
+                <target>Eigene Einträge werden keinem Agenten geschickt: Der Provider, der sie liest, ist für keine Rolle konfiguriert. Registrieren Sie "Sitegeist\SlopMachine\Domain\AdditionalInstructionsProvider" bei den Anweisungen der Rolle des Agenten.</target>
+            </trans-unit>
+            <trans-unit id="list.add">
+                <source>Add entry</source>
+                <target>Eintrag hinzufügen</target>
+            </trans-unit>
+            <trans-unit id="list.configured">
+                <source>From the configuration</source>
+                <target>Aus der Konfiguration</target>
+            </trans-unit>
+            <trans-unit id="list.own">
+                <source>Your own entries</source>
+                <target>Eigene Einträge</target>
+            </trans-unit>
+            <trans-unit id="detail.empty">
+                <source>Select an entry to see the instructions it holds.</source>
+                <target>Wählen Sie einen Eintrag, um die Anweisungen zu sehen.</target>
+            </trans-unit>
+            <trans-unit id="detail.role">
+                <source>Role</source>
+                <target>Rolle</target>
+            </trans-unit>
+            <trans-unit id="action.edit">
+                <source>Edit</source>
+                <target>Bearbeiten</target>
+            </trans-unit>
+            <trans-unit id="action.moveUp">
+                <source>Move up</source>
+                <target>Nach oben</target>
+            </trans-unit>
+            <trans-unit id="action.moveDown">
+                <source>Move down</source>
+                <target>Nach unten</target>
+            </trans-unit>
+            <trans-unit id="action.delete">
+                <source>Delete</source>
+                <target>Löschen</target>
+            </trans-unit>
+            <trans-unit id="action.deleteConfirm">
+                <source>Delete this entry?</source>
+                <target>Diesen Eintrag löschen?</target>
+            </trans-unit>
+            <trans-unit id="action.save">
+                <source>Save</source>
+                <target>Speichern</target>
+            </trans-unit>
+            <trans-unit id="action.cancel">
+                <source>Cancel</source>
+                <target>Abbrechen</target>
+            </trans-unit>
+            <trans-unit id="form.createHeadline">
+                <source>New entry</source>
+                <target>Neuer Eintrag</target>
+            </trans-unit>
+            <trans-unit id="form.editHeadline">
+                <source>Change the entry</source>
+                <target>Eintrag ändern</target>
+            </trans-unit>
+            <trans-unit id="form.title">
+                <source>Title</source>
+                <target>Titel</target>
+            </trans-unit>
+            <trans-unit id="form.instructions">
+                <source>Instructions</source>
+                <target>Anweisungen</target>
+            </trans-unit>
+            <trans-unit id="instruction.error.titleMissing">
+                <source>The entry needs a title.</source>
+                <target>Der Eintrag braucht einen Titel.</target>
+            </trans-unit>
+            <trans-unit id="instruction.error.titleTooLong">
+                <source>The title of the entry must not be longer than 255 characters.</source>
+                <target>Der Titel des Eintrags darf nicht länger als 255 Zeichen sein.</target>
+            </trans-unit>
+            <trans-unit id="instruction.error.instructionsMissing">
+                <source>The entry needs instructions.</source>
+                <target>Der Eintrag braucht Anweisungen.</target>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>

@@ -1,0 +1,64 @@
+#
+# The list of the entries: the ones that are configured for the roles of the installation,
+# and the ones the administrators wrote.
+#
+prototype(Sitegeist.SlopMachine:Component.EntryList) < prototype(Neos.Fusion:Component) {
+    @propTypes {
+        @strict = false
+        configuredEntries = ${PropTypes.any}
+        customEntries = ${PropTypes.any}
+        selectedId = ${PropTypes.any}
+        ownEntriesAreSent = ${PropTypes.any}
+    }
+
+    configuredEntries = ${configuredEntries}
+    customEntries = ${customEntries}
+    selectedId = ${selectedId}
+    ownEntriesAreSent = ${ownEntriesAreSent}
+
+    @private {
+        i18n = ${I18n.id('').source('Main').package('Sitegeist.SlopMachine')}
+
+        newUri = Neos.Fusion:UriBuilder {
+            action = 'new'
+            format = 'htmx'
+        }
+    }
+
+    renderer = afx`
+        <div class="slopmachine-instructions-list">
+            <h2>{private.i18n.id('module.headline').translate()}</h2>
+            <p class={['slopmachine-instructions-hint', props.ownEntriesAreSent ? '' : 'neos-label']}>
+                {private.i18n.id(props.ownEntriesAreSent ? 'module.hint' : 'module.hintNotSent').translate()}
+            </p>
+            <button
+                class="neos-button neos-button-primary"
+                hx-get={private.newUri}
+                hx-target="#slopmachine-agent-instructions"
+                hx-swap="outerHTML"
+            >
+                <i class="fas fa-plus icon-white"></i> {private.i18n.id('list.add').translate()}
+            </button>
+
+            <h3>{private.i18n.id('list.configured').translate()}</h3>
+            <ul class="slopmachine-instructions-entries">
+                <Neos.Fusion:Loop items={props.configuredEntries} itemName="entry">
+                    <Sitegeist.SlopMachine:Component.EntryList.Item
+                        entry={entry}
+                        selectedId={props.selectedId}
+                    />
+                </Neos.Fusion:Loop>
+            </ul>
+
+            <h3>{private.i18n.id('list.own').translate()}</h3>
+            <ul class="slopmachine-instructions-entries">
+                <Neos.Fusion:Loop items={props.customEntries} itemName="entry">
+                    <Sitegeist.SlopMachine:Component.EntryList.Item
+                        entry={entry}
+                        selectedId={props.selectedId}
+                    />
+                </Neos.Fusion:Loop>
+            </ul>
+        </div>
+    `
+}

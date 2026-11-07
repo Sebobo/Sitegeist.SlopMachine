@@ -1,0 +1,38 @@
+#
+# The right side of the module: the instructions of the selected entry, or the form of an
+# entry that is written.
+#
+prototype(Sitegeist.SlopMachine:Component.EntryDetail) < prototype(Neos.Fusion:Component) {
+    @propTypes {
+        @strict = false
+        selectedEntry = ${PropTypes.any}
+        form = ${PropTypes.any}
+    }
+
+    selectedEntry = ${selectedEntry}
+    form = ${form}
+
+    @private {
+        i18n = ${I18n.id('').source('Main').package('Sitegeist.SlopMachine')}
+    }
+
+    renderer = Neos.Fusion:Match {
+        @subject = ${props.form != null ? 'form' : (props.selectedEntry != null ? 'entry' : 'empty')}
+        @default = afx``
+        empty = afx`
+            <div class="slopmachine-instructions-detail">
+                <p class="slopmachine-instructions-hint">{private.i18n.id('detail.empty').translate()}</p>
+            </div>
+        `
+        entry = afx`
+            <Sitegeist.SlopMachine:Component.EntryDetail.Entry
+                entry={props.selectedEntry}
+            />
+        `
+        form = afx`
+            <Sitegeist.SlopMachine:Component.EntryForm
+                form={props.form}
+            />
+        `
+    }
+}

@@ -6,4 +6,3 @@ parameters:
     treatPhpDocTypesAsCertain: false
     ignoreErrors:
         - '#Call to an undefined method [a-zA-Z0-9\\_]+Repository::findOneBy[a-zA-Z]+\(\)#'
-        - '#Call to an undefined method Neos\\Eel\\FlowQuery\\FlowQuery::find\(\)#'
