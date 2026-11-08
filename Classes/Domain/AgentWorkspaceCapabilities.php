@@ -14,7 +14,6 @@ use Neos\ContentRepository\Domain\Model\Workspace;
 use Neos\ContentRepository\Domain\Repository\NodeDataRepository;
 use Neos\ContentRepository\Domain\Service\PublishingServiceInterface;
 use Neos\Flow\Annotations as Flow;
-use Neos\Flow\Security\Context as SecurityContext;
 
 /**
  * Removal, publishing and change management for the agent's own personal workspace.
@@ -35,7 +34,6 @@ class AgentWorkspaceCapabilities
         protected AgentWorkspaceResolver $agentWorkspaceResolver,
         protected PublishingServiceInterface $publishingService,
         protected NodeDataRepository $nodeDataRepository,
-        protected SecurityContext $securityContext,
     ) {
     }
 
@@ -86,53 +84,49 @@ class AgentWorkspaceCapabilities
         bool $dryRun = false,
     ): array {
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function () use ($nodeAggregateIds, $dryRun, &$result) {
-                try {
-                    $personalWorkspace = $this->agentWorkspaceResolver->getWorkspace();
-                    $targetWorkspace = $personalWorkspace->getBaseWorkspace();
-                    if (!$targetWorkspace instanceof Workspace) {
-                        throw new \RuntimeException(
-                            'Your workspace has no base workspace, so there is nothing to publish into.'
-                        );
-                    }
-                    if (!$targetWorkspace->isInternalWorkspace()) {
-                        throw new \RuntimeException(\sprintf(
-                            'Your workspace is based on "%s", which is not an internal workspace. The agent publishes into'
-                            . ' the shared review workspace or into a topic workspace of it - never into "live" and never'
-                            . ' into a personal workspace.',
-                            $targetWorkspace->getName()
-                        ));
-                    }
+        try {
+            $personalWorkspace = $this->agentWorkspaceResolver->getWorkspace();
+            $targetWorkspace = $personalWorkspace->getBaseWorkspace();
+            if (!$targetWorkspace instanceof Workspace) {
+                throw new \RuntimeException(
+                    'Your workspace has no base workspace, so there is nothing to publish into.'
+                );
+            }
+            if (!$targetWorkspace->isInternalWorkspace()) {
+                throw new \RuntimeException(\sprintf(
+                    'Your workspace is based on "%s", which is not an internal workspace. The agent publishes into'
+                    . ' the shared review workspace or into a topic workspace of it - never into "live" and never'
+                    . ' into a personal workspace.',
+                    $targetWorkspace->getName()
+                ));
+            }
 
-                    $unpublishedNodes = $this->publishingService->getUnpublishedNodes($personalWorkspace);
-                    $selectedNodes = $this->selectNodes($unpublishedNodes, $nodeAggregateIds);
+            $unpublishedNodes = $this->publishingService->getUnpublishedNodes($personalWorkspace);
+            $selectedNodes = $this->selectNodes($unpublishedNodes, $nodeAggregateIds);
 
-                    if (!$dryRun) {
-                        foreach ($selectedNodes as $node) {
-                            $this->publishingService->publishNode($node, $targetWorkspace);
-                        }
-                    }
-
-                    $result = [
-                        'success' => true,
-                        'published' => \count($selectedNodes),
-                        'dryRun' => $dryRun,
-                        'workspace' => $personalWorkspace->getName(),
-                        'targetWorkspace' => $targetWorkspace->getName(),
-                        'remainingUnpublishedChanges' => $dryRun
-                            ? \count($unpublishedNodes)
-                            : $this->publishingService->getUnpublishedNodesCount($personalWorkspace),
-                        'nodes' => $this->describeNodes($selectedNodes),
-                    ];
-                } catch (\Throwable $exception) {
-                    $result = [
-                        'success' => false,
-                        'message' => $exception->getMessage(),
-                    ];
+            if (!$dryRun) {
+                foreach ($selectedNodes as $node) {
+                    $this->publishingService->publishNode($node, $targetWorkspace);
                 }
             }
-        );
+
+            $result = [
+                'success' => true,
+                'published' => \count($selectedNodes),
+                'dryRun' => $dryRun,
+                'workspace' => $personalWorkspace->getName(),
+                'targetWorkspace' => $targetWorkspace->getName(),
+                'remainingUnpublishedChanges' => $dryRun
+                    ? \count($unpublishedNodes)
+                    : $this->publishingService->getUnpublishedNodesCount($personalWorkspace),
+                'nodes' => $this->describeNodes($selectedNodes),
+            ];
+        } catch (\Throwable $exception) {
+            $result = [
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ];
+        }
 
         return $result;
     }
@@ -230,35 +224,31 @@ class AgentWorkspaceCapabilities
         $workspace = $this->agentWorkspaceResolver->getWorkspace();
         $result = [];
 
-        $this->securityContext->withoutAuthorizationChecks(
-            function () use ($contentContext, $workspace, $nodeAggregateIds, &$result) {
-                foreach ($nodeAggregateIds as $nodeAggregateId) {
-                    try {
-                        $node = $contentContext->getNodeByIdentifier($nodeAggregateId);
-                        if (!$node instanceof Node) {
-                            throw new \RuntimeException(
-                                \sprintf('No node found for nodeAggregateId %s.', $nodeAggregateId)
-                            );
-                        }
-                        NodeRemoval::assertRemovable($node, $workspace);
-                        $path = $node->getPath();
-                        $this->removeNodeFromWorkspace($node);
-                        $result[] = [
-                            'nodeAggregateId' => $nodeAggregateId,
-                            'path' => $path,
-                            'nodeTypeName' => $node->getNodeTypeName(),
-                            'success' => true,
-                        ];
-                    } catch (\Throwable $exception) {
-                        $result[] = [
-                            'nodeAggregateId' => $nodeAggregateId,
-                            'success' => false,
-                            'message' => $exception->getMessage(),
-                        ];
-                    }
+        foreach ($nodeAggregateIds as $nodeAggregateId) {
+            try {
+                $node = $contentContext->getNodeByIdentifier($nodeAggregateId);
+                if (!$node instanceof Node) {
+                    throw new \RuntimeException(
+                        \sprintf('No node found for nodeAggregateId %s.', $nodeAggregateId)
+                    );
                 }
+                NodeRemoval::assertRemovable($node, $workspace);
+                $path = $node->getPath();
+                $this->removeNodeFromWorkspace($node);
+                $result[] = [
+                    'nodeAggregateId' => $nodeAggregateId,
+                    'path' => $path,
+                    'nodeTypeName' => $node->getNodeTypeName(),
+                    'success' => true,
+                ];
+            } catch (\Throwable $exception) {
+                $result[] = [
+                    'nodeAggregateId' => $nodeAggregateId,
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                ];
             }
-        );
+        }
 
         return [
             'workspace' => $this->agentWorkspaceResolver->getWorkspaceName(),
@@ -308,19 +298,15 @@ class AgentWorkspaceCapabilities
         $baseWorkspace = $workspace->getBaseWorkspace();
         $changes = [];
 
-        $this->securityContext->withoutAuthorizationChecks(
-            function () use ($workspace, $baseWorkspace, $limit, &$changes) {
-                foreach ($this->publishingService->getUnpublishedNodes($workspace) as $node) {
-                    if (\count($changes) >= $limit) {
-                        break;
-                    }
-                    if (!$node instanceof Node) {
-                        continue;
-                    }
-                    $changes[] = $this->describeChange($node, $baseWorkspace);
-                }
+        foreach ($this->publishingService->getUnpublishedNodes($workspace) as $node) {
+            if (\count($changes) >= $limit) {
+                break;
             }
-        );
+            if (!$node instanceof Node) {
+                continue;
+            }
+            $changes[] = $this->describeChange($node, $baseWorkspace);
+        }
 
         $totalCount = $this->publishingService->getUnpublishedNodesCount($workspace);
 
@@ -383,42 +369,41 @@ class AgentWorkspaceCapabilities
         $workspace = $this->agentWorkspaceResolver->getWorkspace();
         $result = [];
 
-        $this->securityContext->withoutAuthorizationChecks(
-            function () use ($workspace, $nodeAggregateIds, $discardAll, $dimensionSpacePoint, &$result) {
-                if ($discardAll) {
-                    $this->publishingService->discardAllNodes($workspace);
-                    $result[] = [
-                        'discardAll' => true,
-                        'success' => true,
-                    ];
+        if ($discardAll) {
+            $this->publishingService->discardAllNodes($workspace);
+            $result[] = [
+                'discardAll' => true,
+                'success' => true,
+            ];
 
-                    return;
-                }
+            return [
+                'workspace' => $workspace->getName(),
+                'results' => $result,
+            ];
+        }
 
-                $contentContext = $this->contentContextFactory->getWritingContentContext(MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint));
-                foreach ($nodeAggregateIds as $nodeAggregateId) {
-                    try {
-                        $node = $contentContext->getNodeByIdentifier($nodeAggregateId);
-                        if (!$node instanceof Node) {
-                            throw new \RuntimeException(
-                                \sprintf('No node found for nodeAggregateId %s.', $nodeAggregateId)
-                            );
-                        }
-                        $this->discardNodeWithItsChildren($node);
-                        $result[] = [
-                            'nodeAggregateId' => $nodeAggregateId,
-                            'success' => true,
-                        ];
-                    } catch (\Throwable $exception) {
-                        $result[] = [
-                            'nodeAggregateId' => $nodeAggregateId,
-                            'success' => false,
-                            'message' => $exception->getMessage(),
-                        ];
-                    }
+        $contentContext = $this->contentContextFactory->getWritingContentContext(MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint));
+        foreach ($nodeAggregateIds as $nodeAggregateId) {
+            try {
+                $node = $contentContext->getNodeByIdentifier($nodeAggregateId);
+                if (!$node instanceof Node) {
+                    throw new \RuntimeException(
+                        \sprintf('No node found for nodeAggregateId %s.', $nodeAggregateId)
+                    );
                 }
+                $this->discardNodeWithItsChildren($node);
+                $result[] = [
+                    'nodeAggregateId' => $nodeAggregateId,
+                    'success' => true,
+                ];
+            } catch (\Throwable $exception) {
+                $result[] = [
+                    'nodeAggregateId' => $nodeAggregateId,
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                ];
             }
-        );
+        }
 
         return [
             'workspace' => $workspace->getName(),

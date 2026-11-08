@@ -9,7 +9,6 @@ use Mcp\Capability\Attribute\Schema;
 use Mcp\Schema\ToolAnnotations;
 use Neos\ContentRepository\Domain\Model\Node;
 use Neos\Flow\Annotations as Flow;
-use Neos\Flow\Security\Context as SecurityContext;
 
 /**
  * Removal access to the workspace the agent hands its work over to.
@@ -26,7 +25,6 @@ class SharedWorkspaceRemovalCapabilities
 {
     public function __construct(
         protected SharedWorkspaceContextFactory $sharedWorkspaceContextFactory,
-        protected SecurityContext $securityContext,
     ) {
     }
 
@@ -80,43 +78,39 @@ class SharedWorkspaceRemovalCapabilities
         $workspaceName = $this->sharedWorkspaceContextFactory->getWorkspaceName();
         $workspace = $this->sharedWorkspaceContextFactory->getWorkspace();
 
-        $this->securityContext->withoutAuthorizationChecks(
-            function () use ($nodeAggregateIds, $dimensionSpacePoint, $workspace, &$result) {
-                $contentContext = $this->sharedWorkspaceContextFactory
-                    ->getWritingContentContext($dimensionSpacePoint);
+        $contentContext = $this->sharedWorkspaceContextFactory
+            ->getWritingContentContext($dimensionSpacePoint);
 
-                foreach ($nodeAggregateIds as $nodeAggregateId) {
-                    try {
-                        $node = $contentContext->getNodeByIdentifier($nodeAggregateId);
-                        if (!$node instanceof Node) {
-                            throw new \RuntimeException(
-                                \sprintf(
-                                    'No node found for nodeAggregateId %s in the shared review workspace. Nodes you'
-                                    . ' created in your own workspace do not exist there.',
-                                    $nodeAggregateId
-                                )
-                            );
-                        }
-                        NodeRemoval::assertRemovable($node, $workspace);
-                        $path = $node->getPath();
-                        $nodeTypeName = $node->getNodeTypeName();
-                        $node->remove();
-                        $result[] = [
-                            'nodeAggregateId' => $nodeAggregateId,
-                            'path' => $path,
-                            'nodeTypeName' => $nodeTypeName,
-                            'success' => true,
-                        ];
-                    } catch (\Throwable $exception) {
-                        $result[] = [
-                            'nodeAggregateId' => $nodeAggregateId,
-                            'success' => false,
-                            'message' => $exception->getMessage(),
-                        ];
-                    }
+        foreach ($nodeAggregateIds as $nodeAggregateId) {
+            try {
+                $node = $contentContext->getNodeByIdentifier($nodeAggregateId);
+                if (!$node instanceof Node) {
+                    throw new \RuntimeException(
+                        \sprintf(
+                            'No node found for nodeAggregateId %s in the shared review workspace. Nodes you'
+                            . ' created in your own workspace do not exist there.',
+                            $nodeAggregateId
+                        )
+                    );
                 }
+                NodeRemoval::assertRemovable($node, $workspace);
+                $path = $node->getPath();
+                $nodeTypeName = $node->getNodeTypeName();
+                $node->remove();
+                $result[] = [
+                    'nodeAggregateId' => $nodeAggregateId,
+                    'path' => $path,
+                    'nodeTypeName' => $nodeTypeName,
+                    'success' => true,
+                ];
+            } catch (\Throwable $exception) {
+                $result[] = [
+                    'nodeAggregateId' => $nodeAggregateId,
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                ];
             }
-        );
+        }
 
         return [
             'workspace' => $workspaceName,

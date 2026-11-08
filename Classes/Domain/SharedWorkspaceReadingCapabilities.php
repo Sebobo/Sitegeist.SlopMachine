@@ -11,7 +11,6 @@ use Neos\ContentRepository\Domain\Model\Node;
 use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Neos\ContentRepository\Domain\Repository\NodeDataRepository;
 use Neos\Flow\Annotations as Flow;
-use Neos\Flow\Security\Context as SecurityContext;
 use Neos\Media\Domain\Model\Asset;
 
 /**
@@ -35,7 +34,6 @@ class SharedWorkspaceReadingCapabilities
     public function __construct(
         protected SharedWorkspaceContextFactory $sharedWorkspaceContextFactory,
         protected NodeDataRepository $nodeDataRepository,
-        protected SecurityContext $securityContext,
         protected ReadPagination $readPagination,
     ) {
     }
@@ -348,22 +346,18 @@ class SharedWorkspaceReadingCapabilities
     private function read(callable $reader, array $dimensionSpacePoint): array
     {
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function () use ($reader, $dimensionSpacePoint, &$result) {
-                try {
-                    $contentContext = $this->sharedWorkspaceContextFactory
-                        ->getReadingContentContext($dimensionSpacePoint);
-                    $result = [
-                        'workspace' => $this->sharedWorkspaceContextFactory->getWorkspaceName(),
-                    ] + $reader($contentContext);
-                } catch (\Throwable $throwable) {
-                    $result = [
-                        'success' => false,
-                        'message' => $throwable->getMessage(),
-                    ];
-                }
-            }
-        );
+        try {
+            $contentContext = $this->sharedWorkspaceContextFactory
+                ->getReadingContentContext($dimensionSpacePoint);
+            $result = [
+                'workspace' => $this->sharedWorkspaceContextFactory->getWorkspaceName(),
+            ] + $reader($contentContext);
+        } catch (\Throwable $throwable) {
+            $result = [
+                'success' => false,
+                'message' => $throwable->getMessage(),
+            ];
+        }
 
         return $result;
     }

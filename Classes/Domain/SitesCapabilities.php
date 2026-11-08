@@ -23,7 +23,6 @@ class SitesCapabilities
     public function __construct(
         protected SiteRepository $siteRepository,
         protected MCPContentContextFactory $contentContextFactory,
-        protected Context $securityContext,
     ) {
     }
 
@@ -50,18 +49,16 @@ class SitesCapabilities
     ): array {
         $sites = [];
         $failure = $this->read($dimensionSpacePoint, function (ContentContext $contentContext) use (&$sites): void {
-            $this->securityContext->withoutAuthorizationChecks(function () use (&$sites, $contentContext) {
-                foreach ($this->siteRepository->findAll() as $site) {
-                    /** @var Site $site */
-                    $siteNode = $contentContext->getNode('/sites/' . $site->getNodeName());
-                    if ($siteNode) {
-                        $sites[] = [
-                            'name' => $site->getName(),
-                            'nodeAggregateId' => $siteNode->getIdentifier(),
-                        ];
-                    }
+            foreach ($this->siteRepository->findAll() as $site) {
+                /** @var Site $site */
+                $siteNode = $contentContext->getNode('/sites/' . $site->getNodeName());
+                if ($siteNode) {
+                    $sites[] = [
+                        'name' => $site->getName(),
+                        'nodeAggregateId' => $siteNode->getIdentifier(),
+                    ];
                 }
-            });
+            }
         });
         if ($failure !== null) {
             return $failure;
@@ -113,22 +110,20 @@ class SitesCapabilities
         $failure = $this->read(
             $dimensionSpacePoint,
             function (ContentContext $contentContext) use (&$sites, $siteNodeName): void {
-                $this->securityContext->withoutAuthorizationChecks(function () use (&$sites, $contentContext, $siteNodeName) {
-                    foreach ($this->siteRepository->findAll() as $site) {
-                        /** @var Site $site */
-                        if ($siteNodeName !== null && $siteNodeName !== '' && $site->getNodeName() !== $siteNodeName) {
-                            continue;
-                        }
-                        $siteNode = $contentContext->getNode('/sites/' . $site->getNodeName());
-                        if ($siteNode === null) {
-                            // The site is configured, but its root node is not in the workspace that is
-                            // being addressed. Reporting it without an id would invite writes against a
-                            // node that cannot be addressed, so it is left out.
-                            continue;
-                        }
-                        $sites[] = $this->describeSite($site, $siteNode->getIdentifier());
+                foreach ($this->siteRepository->findAll() as $site) {
+                    /** @var Site $site */
+                    if ($siteNodeName !== null && $siteNodeName !== '' && $site->getNodeName() !== $siteNodeName) {
+                        continue;
                     }
-                });
+                    $siteNode = $contentContext->getNode('/sites/' . $site->getNodeName());
+                    if ($siteNode === null) {
+                        // The site is configured, but its root node is not in the workspace that is
+                        // being addressed. Reporting it without an id would invite writes against a
+                        // node that cannot be addressed, so it is left out.
+                        continue;
+                    }
+                    $sites[] = $this->describeSite($site, $siteNode->getIdentifier());
+                }
             }
         );
         if ($failure !== null) {

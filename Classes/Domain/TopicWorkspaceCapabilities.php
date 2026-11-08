@@ -11,7 +11,6 @@ use Neos\ContentRepository\Domain\Model\Workspace;
 use Neos\ContentRepository\Domain\Repository\WorkspaceRepository;
 use Neos\ContentRepository\Domain\Service\PublishingServiceInterface;
 use Neos\Flow\Annotations as Flow;
-use Neos\Flow\Security\Context as SecurityContext;
 
 /**
  * Topic workspaces: one workspace per topic an agent works on, and the rebase of the agent's own
@@ -36,7 +35,6 @@ class TopicWorkspaceCapabilities
         protected AgentWorkspaceResolver $agentWorkspaceResolver,
         protected WorkspaceRepository $workspaceRepository,
         protected PublishingServiceInterface $publishingService,
-        protected SecurityContext $securityContext,
     ) {
     }
 
@@ -89,38 +87,34 @@ class TopicWorkspaceCapabilities
         ?string $title = null,
     ): array {
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function () use ($topic, $title, &$result) {
-                try {
-                    $outcome = $this->topicWorkspaceService->createWorkspace($topic, $title);
-                    $workspace = $outcome['workspace'];
+        try {
+            $outcome = $this->topicWorkspaceService->createWorkspace($topic, $title);
+            $workspace = $outcome['workspace'];
 
-                    $result = [
-                        'success' => true,
-                        'created' => $outcome['created'],
-                        'topic' => $topic,
-                        'workspace' => $workspace->getName(),
-                        'title' => $workspace->getTitle(),
-                        'baseWorkspace' => $workspace->getBaseWorkspace()?->getName(),
-                        'message' => $outcome['created']
-                            ? \sprintf(
-                                'Created the topic workspace "%s". Call RebaseOwnWorkspace with this name to work on the topic.',
-                                $workspace->getName()
-                            )
-                            : \sprintf(
-                                'The topic workspace "%s" exists already. Call RebaseOwnWorkspace with this name to work'
-                                . ' on the topic.',
-                                $workspace->getName()
-                            ),
-                    ];
-                } catch (\Throwable $exception) {
-                    $result = [
-                        'success' => false,
-                        'message' => $exception->getMessage(),
-                    ];
-                }
-            }
-        );
+            $result = [
+                'success' => true,
+                'created' => $outcome['created'],
+                'topic' => $topic,
+                'workspace' => $workspace->getName(),
+                'title' => $workspace->getTitle(),
+                'baseWorkspace' => $workspace->getBaseWorkspace()?->getName(),
+                'message' => $outcome['created']
+                    ? \sprintf(
+                        'Created the topic workspace "%s". Call RebaseOwnWorkspace with this name to work on the topic.',
+                        $workspace->getName()
+                    )
+                    : \sprintf(
+                        'The topic workspace "%s" exists already. Call RebaseOwnWorkspace with this name to work'
+                        . ' on the topic.',
+                        $workspace->getName()
+                    ),
+            ];
+        } catch (\Throwable $exception) {
+            $result = [
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ];
+        }
 
         return $result;
     }
@@ -169,18 +163,14 @@ class TopicWorkspaceCapabilities
         string $workspace,
     ): array {
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function () use ($workspace, &$result) {
-                try {
-                    $result = $this->rebase($workspace);
-                } catch (\Throwable $exception) {
-                    $result = [
-                        'success' => false,
-                        'message' => $exception->getMessage(),
-                    ];
-                }
-            }
-        );
+        try {
+            $result = $this->rebase($workspace);
+        } catch (\Throwable $exception) {
+            $result = [
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ];
+        }
 
         return $result;
     }

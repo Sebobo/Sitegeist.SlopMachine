@@ -27,7 +27,6 @@ class ContentRepositoryReadingCapabilities
 
     public function __construct(
         protected MCPContentContextFactory $contentContextFactory,
-        protected Context $securityContext,
         protected NodeSearchServiceInterface $nodeSearchService,
         protected NodeDataRepository $nodeDataRepository,
         protected ReadPagination $readPagination,
@@ -68,65 +67,53 @@ class ContentRepositoryReadingCapabilities
         string|array $dimensionSpacePoint = [],
     ): array {
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function() use(
-                $nodeTypeNames,
-                $dimensionSpacePoint,
-                $parentNodeAggregateId,
-                $limitToPropertyNames,
-                $limit,
-                $cursor,
-                &$result,
-            ) {
-                try {
-                    $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
-                    $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
-                    $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
-                    $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
+        try {
+            $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
+            $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
+            $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
+            $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
 
-                    $ancestorNode = $this->requireNode($contentContext, $parentNodeAggregateId);
-                    /**
-                     * One query for the whole filter, on purpose.
-                     *
-                     * A FlowQuery filter group such as "[instanceof A],[instanceof B]" is evaluated
-                     * as one query per group member, so a node matching two of the requested types
-                     * - a type together with one of its super types, which is the normal case when
-                     * asking for a base type like Neos.Neos:Document and a concrete one - was
-                     * returned once per matching group. The content repository takes the filter as
-                     * a single comma separated list and resolves it in one pass instead.
-                     */
-                    $foundNodes = $this->readPagination->findChildren(
-                        $contentContext,
-                        $ancestorNode,
-                        $nodeTypeNames === [] ? '' : \implode(',', $nodeTypeNames)
-                    );
-                    $foundNodes = $this->readPagination->applyCursor($foundNodes, $cursor === [] ? null : $cursor);
-                    $page = $this->readPagination->paginate($foundNodes, $limit);
-                    $nodes = [];
-                    foreach ($page['nodes'] as $node) {
-                        /** @var Node $node */
-                        $nodes[] = $this->serializeNode($node, $limitToPropertyNames);
-                    }
-
-                    $result = [
-                        'uri' => self::FIND_CHILDREN_URI,
-                        'name' => 'Child nodes',
-                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource. The visibility state of the node is reported next to the properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type, but SetNodeProperties writes them and they are what a hide or an unhide is read back through.',
-                        'mimeType' => 'application/json',
-                        'returnedCount' => $page['returnedCount'],
-                        'truncated' => $page['truncated'],
-                        ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
-                        'text' => \json_encode($nodes),
-                    ];
-                } catch (\Throwable $t) {
-                    $result = [
-                        'success' => false,
-                        'message' => $t->getMessage(),
-                    ];
-                    return;
-                }
+            $ancestorNode = $this->requireNode($contentContext, $parentNodeAggregateId);
+            /**
+             * One query for the whole filter, on purpose.
+             *
+             * A FlowQuery filter group such as "[instanceof A],[instanceof B]" is evaluated
+             * as one query per group member, so a node matching two of the requested types
+             * - a type together with one of its super types, which is the normal case when
+             * asking for a base type like Neos.Neos:Document and a concrete one - was
+             * returned once per matching group. The content repository takes the filter as
+             * a single comma separated list and resolves it in one pass instead.
+             */
+            $foundNodes = $this->readPagination->findChildren(
+                $contentContext,
+                $ancestorNode,
+                $nodeTypeNames === [] ? '' : \implode(',', $nodeTypeNames)
+            );
+            $foundNodes = $this->readPagination->applyCursor($foundNodes, $cursor === [] ? null : $cursor);
+            $page = $this->readPagination->paginate($foundNodes, $limit);
+            $nodes = [];
+            foreach ($page['nodes'] as $node) {
+                /** @var Node $node */
+                $nodes[] = $this->serializeNode($node, $limitToPropertyNames);
             }
-        );
+
+            $result = [
+                'uri' => self::FIND_CHILDREN_URI,
+                'name' => 'Child nodes',
+                'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource. The visibility state of the node is reported next to the properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type, but SetNodeProperties writes them and they are what a hide or an unhide is read back through.',
+                'mimeType' => 'application/json',
+                'returnedCount' => $page['returnedCount'],
+                'truncated' => $page['truncated'],
+                ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
+                'text' => \json_encode($nodes),
+            ];
+        } catch (\Throwable $t) {
+            $result = [
+                'success' => false,
+                'message' => $t->getMessage(),
+            ];
+            return $result;
+        }
 
         return $result;
     }
@@ -180,80 +167,69 @@ class ContentRepositoryReadingCapabilities
         string|array $dimensionSpacePoint = [],
     ): array {
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function () use (
-                $nodeAggregateId,
-                $limitToPropertyNames,
-                $limit,
-                $cursor,
-                $dimensionSpacePoint,
-                &$result,
-            ) {
-                try {
-                    $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
-                    $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
-                    $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
+        try {
+            $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
+            $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
+            $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
 
-                    $document = $this->requireNode($contentContext, $nodeAggregateId);
+            $document = $this->requireNode($contentContext, $nodeAggregateId);
 
-                    /**
-                     * Two steps, because the content of a document sits two levels down: the
-                     * document owns the content collections, and the collections own the layout
-                     * roots (a column, a banner), and the content is below those. The second
-                     * step takes the descendants of the layout roots, which already covers the
-                     * fragment column and everything in it.
-                     */
-                    $nodes = [];
-                    $seen = [];
-                    $collections = $this->readPagination->findChildren(
-                        $contentContext,
-                        $document,
-                        'Neos.Neos:ContentCollection'
-                    );
-                    foreach ($collections as $collection) {
-                        $layoutRoots = $this->readPagination->findChildren($contentContext, $collection, '');
-                        foreach ($layoutRoots as $layoutRoot) {
-                            if (!isset($seen[$layoutRoot->getIdentifier()])) {
-                                $seen[$layoutRoot->getIdentifier()] = true;
-                                $nodes[] = $layoutRoot;
-                            }
-                        }
-                        $descendants = $this->readPagination->findDescendants($contentContext, $collection, '');
-                        foreach ($descendants as $descendant) {
-                            if (!isset($seen[$descendant->getIdentifier()])) {
-                                $seen[$descendant->getIdentifier()] = true;
-                                $nodes[] = $descendant;
-                            }
-                        }
+            /**
+             * Two steps, because the content of a document sits two levels down: the
+             * document owns the content collections, and the collections own the layout
+             * roots (a column, a banner), and the content is below those. The second
+             * step takes the descendants of the layout roots, which already covers the
+             * fragment column and everything in it.
+             */
+            $nodes = [];
+            $seen = [];
+            $collections = $this->readPagination->findChildren(
+                $contentContext,
+                $document,
+                'Neos.Neos:ContentCollection'
+            );
+            foreach ($collections as $collection) {
+                $layoutRoots = $this->readPagination->findChildren($contentContext, $collection, '');
+                foreach ($layoutRoots as $layoutRoot) {
+                    if (!isset($seen[$layoutRoot->getIdentifier()])) {
+                        $seen[$layoutRoot->getIdentifier()] = true;
+                        $nodes[] = $layoutRoot;
                     }
-
-                    $nodes = $this->readPagination->applyCursor($nodes, $cursor === [] ? null : $cursor);
-                    $page = $this->readPagination->paginate($nodes, $limit);
-
-                    $payload = \array_map(
-                        fn (Node $node): array => $this->serializeNode($node, $limitToPropertyNames),
-                        $page['nodes'],
-                    );
-
-                    $result = [
-                        'uri' => self::FIND_CONTENT_URI,
-                        'name' => 'Content of a document',
-                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource. The visibility state of the node is reported next to the properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type, but SetNodeProperties writes them and they are what a hide or an unhide is read back through.',
-                        'mimeType' => 'application/json',
-                        'returnedCount' => $page['returnedCount'],
-                        'truncated' => $page['truncated'],
-                        ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
-                        'text' => \json_encode($payload),
-                    ];
-                } catch (\Throwable $t) {
-                    $result = [
-                        'success' => false,
-                        'message' => $t->getMessage(),
-                    ];
-                    return;
+                }
+                $descendants = $this->readPagination->findDescendants($contentContext, $collection, '');
+                foreach ($descendants as $descendant) {
+                    if (!isset($seen[$descendant->getIdentifier()])) {
+                        $seen[$descendant->getIdentifier()] = true;
+                        $nodes[] = $descendant;
+                    }
                 }
             }
-        );
+
+            $nodes = $this->readPagination->applyCursor($nodes, $cursor === [] ? null : $cursor);
+            $page = $this->readPagination->paginate($nodes, $limit);
+
+            $payload = \array_map(
+                fn (Node $node): array => $this->serializeNode($node, $limitToPropertyNames),
+                $page['nodes'],
+            );
+
+            $result = [
+                'uri' => self::FIND_CONTENT_URI,
+                'name' => 'Content of a document',
+                'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource. The visibility state of the node is reported next to the properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type, but SetNodeProperties writes them and they are what a hide or an unhide is read back through.',
+                'mimeType' => 'application/json',
+                'returnedCount' => $page['returnedCount'],
+                'truncated' => $page['truncated'],
+                ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
+                'text' => \json_encode($payload),
+            ];
+        } catch (\Throwable $t) {
+            $result = [
+                'success' => false,
+                'message' => $t->getMessage(),
+            ];
+            return $result;
+        }
 
         return $result;
     }
@@ -304,57 +280,44 @@ class ContentRepositoryReadingCapabilities
         string|array $dimensionSpacePoint = [],
     ): array {
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function () use (
-                $nodeAggregateId,
-                $nodeTypeNames,
-                $recursive,
-                $limitToPropertyNames,
-                $limit,
-                $cursor,
-                $dimensionSpacePoint,
-                &$result,
-            ) {
-                try {
-                    $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
-                    $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
-                    $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
-                    $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
+        try {
+            $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
+            $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
+            $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
+            $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
 
-                    $ancestorNode = $this->requireNode($contentContext, $nodeAggregateId);
-                    $nodeTypeFilter = $nodeTypeNames === [] ? '' : \implode(',', $nodeTypeNames);
+            $ancestorNode = $this->requireNode($contentContext, $nodeAggregateId);
+            $nodeTypeFilter = $nodeTypeNames === [] ? '' : \implode(',', $nodeTypeNames);
 
-                    $nodes = $recursive
-                        ? $this->readPagination->findDescendants($contentContext, $ancestorNode, $nodeTypeFilter)
-                        : $this->readPagination->findChildren($contentContext, $ancestorNode, $nodeTypeFilter);
+            $nodes = $recursive
+                ? $this->readPagination->findDescendants($contentContext, $ancestorNode, $nodeTypeFilter)
+                : $this->readPagination->findChildren($contentContext, $ancestorNode, $nodeTypeFilter);
 
-                    $nodes = $this->readPagination->applyCursor($nodes, $cursor === [] ? null : $cursor);
-                    $page = $this->readPagination->paginate($nodes, $limit);
+            $nodes = $this->readPagination->applyCursor($nodes, $cursor === [] ? null : $cursor);
+            $page = $this->readPagination->paginate($nodes, $limit);
 
-                    $payload = \array_map(
-                        fn (Node $node): array => $this->serializeNode($node, $limitToPropertyNames),
-                        $page['nodes'],
-                    );
+            $payload = \array_map(
+                fn (Node $node): array => $this->serializeNode($node, $limitToPropertyNames),
+                $page['nodes'],
+            );
 
-                    $result = [
-                        'uri' => self::FIND_DOCUMENTS_URI,
-                        'name' => 'Documents below a node',
-                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource. The visibility state of the node is reported next to the properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type, but SetNodeProperties writes them and they are what a hide or an unhide is read back through.',
-                        'mimeType' => 'application/json',
-                        'returnedCount' => $page['returnedCount'],
-                        'truncated' => $page['truncated'],
-                        ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
-                        'text' => \json_encode($payload),
-                    ];
-                } catch (\Throwable $t) {
-                    $result = [
-                        'success' => false,
-                        'message' => $t->getMessage(),
-                    ];
-                    return;
-                }
-            }
-        );
+            $result = [
+                'uri' => self::FIND_DOCUMENTS_URI,
+                'name' => 'Documents below a node',
+                'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource. The visibility state of the node is reported next to the properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type, but SetNodeProperties writes them and they are what a hide or an unhide is read back through.',
+                'mimeType' => 'application/json',
+                'returnedCount' => $page['returnedCount'],
+                'truncated' => $page['truncated'],
+                ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
+                'text' => \json_encode($payload),
+            ];
+        } catch (\Throwable $t) {
+            $result = [
+                'success' => false,
+                'message' => $t->getMessage(),
+            ];
+            return $result;
+        }
 
         return $result;
     }
@@ -397,73 +360,60 @@ class ContentRepositoryReadingCapabilities
         string|array $dimensionSpacePoint = [],
     ): array {
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function() use(
-                $nodeTypeNames,
-                $dimensionSpacePoint,
-                $ancestorNodeAggregateId,
-                $limitToPropertyNames,
-                $searchTerm,
-                $limit,
-                $cursor,
-                &$result,
-            ) {
-                try {
-                    $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
-                    $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
-                    $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
-                    $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
+        try {
+            $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
+            $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
+            $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
+            $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
 
-                    if ($searchTerm = $this->resolveSingleValue($searchTerm)) {
-                        /** @var Node[] $nodes */
-                        $nodes = $this->nodeSearchService->findByProperties($searchTerm, $nodeTypeNames, $contentContext);
-                    } else {
-                        /**
-                         * The query goes through the repository rather than through a FlowQuery
-                         * find(), because the repository sorts the nodes of a subtree by their
-                         * index and breaks ties by the aggregate id - and that order is what the
-                         * cursor is a position in. A FlowQuery result is in tree order, whose
-                         * indexes are not comparable between different parents, so a cursor into it
-                         * would skip and repeat nodes.
-                         *
-                         * The repository resolves a comma separated list of node types in one
-                         * query, so a type together with one of its super types still returns
-                         * every matching node exactly once.
-                         */
-                        $ancestorNode = $this->requireNode($contentContext, $ancestorNodeAggregateId);
-                        /** @var Node[] $nodes */
-                        $nodes = $this->readPagination->findDescendants(
-                            $contentContext,
-                            $ancestorNode,
-                            $nodeTypeNames === [] ? '' : \implode(',', $nodeTypeNames)
-                        );
-                    }
-                    $nodes = $this->readPagination->applyCursor($nodes, $cursor === [] ? null : $cursor);
-                    $page = $this->readPagination->paginate($nodes, $limit);
-                    $payload = \array_map(
-                        fn (Node $node): array => $this->serializeNode($node, $limitToPropertyNames),
-                        $page['nodes'],
-                    );
-
-                    $result = [
-                        'uri' => self::FIND_DESCENDANTS_URI,
-                        'name' => 'Descendant nodes',
-                        'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource. The visibility state of the node is reported next to the properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type, but SetNodeProperties writes them and they are what a hide or an unhide is read back through.',
-                        'mimeType' => 'application/json',
-                        'returnedCount' => $page['returnedCount'],
-                        'truncated' => $page['truncated'],
-                        ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
-                        'text' => \json_encode($payload),
-                    ];
-                } catch (\Throwable $t) {
-                    $result = [
-                        'success' => false,
-                        'message' => $t->getMessage(),
-                    ];
-                    return;
-                }
+            if ($searchTerm = $this->resolveSingleValue($searchTerm)) {
+                /** @var Node[] $nodes */
+                $nodes = $this->nodeSearchService->findByProperties($searchTerm, $nodeTypeNames, $contentContext);
+            } else {
+                /**
+                 * The query goes through the repository rather than through a FlowQuery
+                 * find(), because the repository sorts the nodes of a subtree by their
+                 * index and breaks ties by the aggregate id - and that order is what the
+                 * cursor is a position in. A FlowQuery result is in tree order, whose
+                 * indexes are not comparable between different parents, so a cursor into it
+                 * would skip and repeat nodes.
+                 *
+                 * The repository resolves a comma separated list of node types in one
+                 * query, so a type together with one of its super types still returns
+                 * every matching node exactly once.
+                 */
+                $ancestorNode = $this->requireNode($contentContext, $ancestorNodeAggregateId);
+                /** @var Node[] $nodes */
+                $nodes = $this->readPagination->findDescendants(
+                    $contentContext,
+                    $ancestorNode,
+                    $nodeTypeNames === [] ? '' : \implode(',', $nodeTypeNames)
+                );
             }
-        );
+            $nodes = $this->readPagination->applyCursor($nodes, $cursor === [] ? null : $cursor);
+            $page = $this->readPagination->paginate($nodes, $limit);
+            $payload = \array_map(
+                fn (Node $node): array => $this->serializeNode($node, $limitToPropertyNames),
+                $page['nodes'],
+            );
+
+            $result = [
+                'uri' => self::FIND_DESCENDANTS_URI,
+                'name' => 'Descendant nodes',
+                'description' => 'A list of nodes. The aggregateId identifies a node in the subgraph. The properties field contains the current state of the properties of that node. The nodeTypeName field contains the name of the type of that node, for more information see the ' . NodeTypeSchemaCapabilities::FULL_URI . ' resource. The visibility state of the node is reported next to the properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type, but SetNodeProperties writes them and they are what a hide or an unhide is read back through.',
+                'mimeType' => 'application/json',
+                'returnedCount' => $page['returnedCount'],
+                'truncated' => $page['truncated'],
+                ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
+                'text' => \json_encode($payload),
+            ];
+        } catch (\Throwable $t) {
+            $result = [
+                'success' => false,
+                'message' => $t->getMessage(),
+            ];
+            return $result;
+        }
 
         return $result;
     }
@@ -508,68 +458,55 @@ class ContentRepositoryReadingCapabilities
         string|array $dimensionSpacePoint = [],
     ): array {
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function () use (
-                $dimensionSpacePoint,
-                $entryNodeAggregateId,
-                $nodeTypeNames,
-                $maximumLevels,
-                $limitToPropertyNames,
-                $limit,
-                $cursor,
-                &$result,
-            ) {
-                try {
-                    $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
-                    $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
-                    $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
-                    $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
+        try {
+            $dimensionSpacePoint = MCPContentContextFactory::decodeDimensionSpacePoint($dimensionSpacePoint);
+            $nodeTypeNames = $this->resolveNodeTypeNames($nodeTypeNames);
+            $limitToPropertyNames = $this->resolveListValue($limitToPropertyNames);
+            $contentContext = $this->contentContextFactory->getReadingContentContext($dimensionSpacePoint);
 
-                    $entryNode = $contentContext->getNodeByIdentifier($entryNodeAggregateId);
-                    if (!$entryNode instanceof Node) {
-                        throw new \RuntimeException('entry node not found for given nodeAggregateId.');
-                    }
-
-                    $walk = $this->collectSubtreeWalk(
-                        contentContext: $contentContext,
-                        currentNode: $entryNode,
-                        nodeTypeFilter: $nodeTypeNames === [] ? '' : \implode(',', $nodeTypeNames),
-                        level: 0,
-                        maximumLevels: $maximumLevels,
-                        walk: [],
-                    );
-
-                    $walk = $this->readPagination->applyCursor(
-                        $walk,
-                        $cursor === [] ? null : $cursor,
-                        static fn (array $entry): array => [$entry['node']->getIndex(), $entry['node']->getIdentifier()]
-                    );
-                    $page = $this->readPagination->paginate(
-                        $walk,
-                        $limit,
-                        static fn (array $entry): array => [$entry['node']->getIndex(), $entry['node']->getIdentifier()]
-                    );
-                    $subtree = $this->buildSubtreeFromWalk($page['nodes'], $limitToPropertyNames);
-
-                    $result = [
-                        'uri' => self::FIND_SUBTREE_URI,
-                        'name' => 'Page subtree',
-                        'description' => 'A hierarchical subtree with level, node and children each.',
-                        'mimeType' => 'application/json',
-                        'returnedCount' => $page['returnedCount'],
-                        'truncated' => $page['truncated'],
-                        ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
-                        'text' => \json_encode($subtree),
-                    ];
-                } catch (\Throwable $t) {
-                    $result = [
-                        'success' => false,
-                        'message' => $t->getMessage(),
-                    ];
-                    return;
-                }
+            $entryNode = $contentContext->getNodeByIdentifier($entryNodeAggregateId);
+            if (!$entryNode instanceof Node) {
+                throw new \RuntimeException('entry node not found for given nodeAggregateId.');
             }
-        );
+
+            $walk = $this->collectSubtreeWalk(
+                contentContext: $contentContext,
+                currentNode: $entryNode,
+                nodeTypeFilter: $nodeTypeNames === [] ? '' : \implode(',', $nodeTypeNames),
+                level: 0,
+                maximumLevels: $maximumLevels,
+                walk: [],
+            );
+
+            $walk = $this->readPagination->applyCursor(
+                $walk,
+                $cursor === [] ? null : $cursor,
+                static fn (array $entry): array => [$entry['node']->getIndex(), $entry['node']->getIdentifier()]
+            );
+            $page = $this->readPagination->paginate(
+                $walk,
+                $limit,
+                static fn (array $entry): array => [$entry['node']->getIndex(), $entry['node']->getIdentifier()]
+            );
+            $subtree = $this->buildSubtreeFromWalk($page['nodes'], $limitToPropertyNames);
+
+            $result = [
+                'uri' => self::FIND_SUBTREE_URI,
+                'name' => 'Page subtree',
+                'description' => 'A hierarchical subtree with level, node and children each.',
+                'mimeType' => 'application/json',
+                'returnedCount' => $page['returnedCount'],
+                'truncated' => $page['truncated'],
+                ReadPagination::CURSOR_KEY => $page[ReadPagination::CURSOR_KEY],
+                'text' => \json_encode($subtree),
+            ];
+        } catch (\Throwable $t) {
+            $result = [
+                'success' => false,
+                'message' => $t->getMessage(),
+            ];
+            return $result;
+        }
 
         return $result;
     }

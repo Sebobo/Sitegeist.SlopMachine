@@ -8,7 +8,6 @@ use Mcp\Capability\Attribute\McpTool;
 use Mcp\Capability\Attribute\Schema;
 use Neos\ContentRepository\Domain\Model\Node;
 use Neos\Flow\Annotations as Flow;
-use Neos\Flow\Security\Context as SecurityContext;
 use Neos\Neos\Domain\Service\ContentContext;
 
 /**
@@ -29,7 +28,6 @@ class ContentRepositoryStructureCapabilities
 {
     public function __construct(
         protected MCPContentContextFactory $contentContextFactory,
-        protected SecurityContext $securityContext,
     ) {
     }
 
@@ -62,37 +60,33 @@ class ContentRepositoryStructureCapabilities
             $command['originDimensionSpacePoint']
         );
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function () use ($contentContext, $command, &$result): void {
-                try {
-                    $node = $this->requireNode($contentContext, $command['nodeAggregateId']);
-                    $newParent = $this->requireNode($contentContext, $command['newParentNodeAggregateId']);
+        try {
+            $node = $this->requireNode($contentContext, $command['nodeAggregateId']);
+            $newParent = $this->requireNode($contentContext, $command['newParentNodeAggregateId']);
 
-                    if ($node->getParentPath() === $newParent->getPath()) {
-                        $result = [
-                            'success' => true,
-                            'message' => 'The node is already below the given parent.',
-                            'nodeAggregateId' => $node->getIdentifier(),
-                            'path' => $node->getPath(),
-                        ];
-                        return;
-                    }
-
-                    $node->moveInto($newParent);
-
-                    $result = [
-                        'success' => true,
-                        'nodeAggregateId' => $node->getIdentifier(),
-                        'path' => $node->getPath(),
-                    ];
-                } catch (\Throwable $exception) {
-                    $result = [
-                        'success' => false,
-                        'message' => $exception->getMessage(),
-                    ];
-                }
+            if ($node->getParentPath() === $newParent->getPath()) {
+                $result = [
+                    'success' => true,
+                    'message' => 'The node is already below the given parent.',
+                    'nodeAggregateId' => $node->getIdentifier(),
+                    'path' => $node->getPath(),
+                ];
+                return $result;
             }
-        );
+
+            $node->moveInto($newParent);
+
+            $result = [
+                'success' => true,
+                'nodeAggregateId' => $node->getIdentifier(),
+                'path' => $node->getPath(),
+            ];
+        } catch (\Throwable $exception) {
+            $result = [
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ];
+        }
 
         return $this->payload($result);
     }

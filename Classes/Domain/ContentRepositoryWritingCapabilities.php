@@ -13,7 +13,6 @@ use Neos\ContentRepository\Domain\Service\NodeTypeManager;
 use Neos\ContentRepository\Domain\Utility\NodePaths;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Property\PropertyMapper;
-use Neos\Flow\Security\Context as SecurityContext;
 use Neos\Neos\Domain\Service\ContentContext;
 
 #[Flow\Proxy(false)]
@@ -25,7 +24,6 @@ class ContentRepositoryWritingCapabilities
     public function __construct(
         protected MCPContentContextFactory $contentContextFactory,
         protected NodeTypeManager $nodeTypeManager,
-        protected SecurityContext $securityContext,
         protected PropertyMapper $propertyMapper,
         protected NodePropertyValidation $nodePropertyValidation,
     ) {
@@ -237,70 +235,56 @@ class ContentRepositoryWritingCapabilities
     ): array {
         $contentContext = $this->contentContextFactory->getWritingContentContext($originDimensionSpacePoint);
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function() use(
-                $nodeTypeName,
-                $contentContext,
-                $parentNodeAggregateId,
-                $initialPropertyValues,
+        try {
+            $parentNode = $this->requireNode($contentContext, $parentNodeAggregateId);
+            // Before the node exists: a rejected command that left a half created node
+            // behind would invite a retry that creates a duplicate.
+            $this->requireValidPropertyValues($this->nodeTypeManager->getNodeType($nodeTypeName), $initialPropertyValues);
+            /** @var Node $createdNode */
+            $createdNode = $parentNode->createNode(
+                $nodeName ?: NodePaths::generateRandomNodeName(),
+                $this->nodeTypeManager->getNodeType($nodeTypeName),
                 $nodeAggregateId,
-                $succeedingSiblingNodeAggregateId,
-                $nodeName,
-                $references,
-                &$result,
-            ) {
-                try {
-                    $parentNode = $this->requireNode($contentContext, $parentNodeAggregateId);
-                    // Before the node exists: a rejected command that left a half created node
-                    // behind would invite a retry that creates a duplicate.
-                    $this->requireValidPropertyValues($this->nodeTypeManager->getNodeType($nodeTypeName), $initialPropertyValues);
-                    /** @var Node $createdNode */
-                    $createdNode = $parentNode->createNode(
-                        $nodeName ?: NodePaths::generateRandomNodeName(),
-                        $this->nodeTypeManager->getNodeType($nodeTypeName),
-                        $nodeAggregateId,
-                    );
-                    $nodeType = $this->nodeTypeManager->getNodeType($nodeTypeName);
-                    if ($initialPropertyValues !== []) {
-                        $this->setProperties($createdNode, $initialPropertyValues);
-                    }
-                    if ($references !== []) {
-                        $this->setReferences($createdNode, $references);
-                    }
-                    if ($succeedingSibling = $succeedingSiblingNodeAggregateId ? $contentContext->getNodeByIdentifier($succeedingSiblingNodeAggregateId) : null) {
-                        $createdNode->moveBefore($succeedingSibling);
-                    }
-                    $tetheredDescendantIds = [];
-                    foreach ($nodeType->getAutoCreatedChildNodes() as $nodeName => $tetheredNodeType) {
-                        // The node has already been created at this point, so a tethered child that
-                        // cannot be resolved is reported as missing instead of failing the whole
-                        // command: reporting a failure would invite a retry that creates a duplicate.
-                        $tetheredNode = $createdNode->getNode($nodeName);
-                        $tetheredDescendantIds[$nodeName] = $tetheredNode?->getIdentifier();
-                    }
-
-                    $payload = [
-                        'success' => true,
-                        'nodeAggregateId' => $createdNode->getIdentifier(),
-                        'nodeName' => $createdNode->getName(),
-                        'tetheredDescendantAggregateIds' => $tetheredDescendantIds,
-                    ];
-                    $this->reportEffectivePropertyValues($createdNode, $initialPropertyValues, $payload);
-
-                    // The payload is the entry of a list of command results, not a tool result
-                    // of its own, so it is returned flat. Wrapping it in a tool result envelope
-                    // would hide the success flag one level deeper than in every other command
-                    // result of this tool, and the shared workspace variant of this bulk write
-                    // returns it flat as well.
-                    $result = $payload;
-                } catch (\Throwable $exception) {
-                    $result = [
-                        'success' => false,
-                        'message' => $exception->getMessage(),
-                    ];
-                }
+            );
+            $nodeType = $this->nodeTypeManager->getNodeType($nodeTypeName);
+            if ($initialPropertyValues !== []) {
+                $this->setProperties($createdNode, $initialPropertyValues);
             }
-        );
+            if ($references !== []) {
+                $this->setReferences($createdNode, $references);
+            }
+            if ($succeedingSibling = $succeedingSiblingNodeAggregateId ? $contentContext->getNodeByIdentifier($succeedingSiblingNodeAggregateId) : null) {
+                $createdNode->moveBefore($succeedingSibling);
+            }
+            $tetheredDescendantIds = [];
+            foreach ($nodeType->getAutoCreatedChildNodes() as $nodeName => $tetheredNodeType) {
+                // The node has already been created at this point, so a tethered child that
+                // cannot be resolved is reported as missing instead of failing the whole
+                // command: reporting a failure would invite a retry that creates a duplicate.
+                $tetheredNode = $createdNode->getNode($nodeName);
+                $tetheredDescendantIds[$nodeName] = $tetheredNode?->getIdentifier();
+            }
+
+            $payload = [
+                'success' => true,
+                'nodeAggregateId' => $createdNode->getIdentifier(),
+                'nodeName' => $createdNode->getName(),
+                'tetheredDescendantAggregateIds' => $tetheredDescendantIds,
+            ];
+            $this->reportEffectivePropertyValues($createdNode, $initialPropertyValues, $payload);
+
+            // The payload is the entry of a list of command results, not a tool result
+            // of its own, so it is returned flat. Wrapping it in a tool result envelope
+            // would hide the success flag one level deeper than in every other command
+            // result of this tool, and the shared workspace variant of this bulk write
+            // returns it flat as well.
+            $result = $payload;
+        } catch (\Throwable $exception) {
+            $result = [
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ];
+        }
 
         return $result;
     }
@@ -317,32 +301,23 @@ class ContentRepositoryWritingCapabilities
     ): array {
         $contentContext = $this->contentContextFactory->getWritingContentContext($originDimensionSpacePoint);
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function() use(
-                $nodeAggregateId,
-                $contentContext,
-                $propertyValues,
-                &$result,
-            ) {
-                try {
-                    $node = $this->requireNode($contentContext, $nodeAggregateId);
-                    $this->requireValidPropertyValues($node->getNodeType(), $propertyValues);
-                    $this->setProperties($node, $propertyValues);
+        try {
+            $node = $this->requireNode($contentContext, $nodeAggregateId);
+            $this->requireValidPropertyValues($node->getNodeType(), $propertyValues);
+            $this->setProperties($node, $propertyValues);
 
-                    $result = [
-                        'success' => true,
-                        'message' => null,
-                        'nodeAggregateId' => $nodeAggregateId,
-                    ];
-                    $this->reportEffectivePropertyValues($node, $propertyValues, $result);
-                } catch (\Throwable $exception) {
-                    $result = [
-                        'success' => false,
-                        'message' => $exception->getMessage(),
-                    ];
-                }
-            }
-        );
+            $result = [
+                'success' => true,
+                'message' => null,
+                'nodeAggregateId' => $nodeAggregateId,
+            ];
+            $this->reportEffectivePropertyValues($node, $propertyValues, $result);
+        } catch (\Throwable $exception) {
+            $result = [
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ];
+        }
 
         return $result;
     }
@@ -359,30 +334,21 @@ class ContentRepositoryWritingCapabilities
     ): array {
         $contentContext = $this->contentContextFactory->getWritingContentContext($originDimensionSpacePoint);
         $result = [];
-        $this->securityContext->withoutAuthorizationChecks(
-            function() use(
-                $nodeAggregateId,
-                $contentContext,
-                $references,
-                &$result,
-            ) {
-                try {
-                    $node = $this->requireNode($contentContext, $nodeAggregateId);
-                    $this->setReferences($node, $references);
+        try {
+            $node = $this->requireNode($contentContext, $nodeAggregateId);
+            $this->setReferences($node, $references);
 
-                    $result = [
-                        'success' => true,
-                        'message' => null,
-                        'nodeAggregateId' => $nodeAggregateId,
-                    ];
-                } catch (\Throwable $exception) {
-                    $result = [
-                        'success' => false,
-                        'message' => $exception->getMessage(),
-                    ];
-                }
-            }
-        );
+            $result = [
+                'success' => true,
+                'message' => null,
+                'nodeAggregateId' => $nodeAggregateId,
+            ];
+        } catch (\Throwable $exception) {
+            $result = [
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ];
+        }
 
         return $result;
     }
