@@ -105,6 +105,12 @@ final class SharedWorkspaceInstructionsProvider implements InstructionsProvider
               which is the opposite of RemoveNode: reverting a node you created removes it, reverting a node you edited
               restores it. Prefer DiscardChanges when you are unsure, and prefer an explicit list of node aggregate ids
               over discardAll.
+            - To see how a document looks, call PreviewDocument with the node aggregate id. It returns the URL of the
+            . preview - the rendered page, not the content of the document. Fetch the URL with the same token you use for
+            . this connection, otherwise the frontend answers with the login page instead of the page:
+            . curl -H "Authorization: Bearer <your token>" "<the url>"
+            . The preview of your own workspace shows your changes, the preview of the workspace you hand your work over
+            . to shows the state a reviewer sees.
             You never publish into the live workspace, and you never publish into a workspace you are not based on.
             The only publish you can do is into the workspace you are based on; a human decides whether it goes live.';
     }
