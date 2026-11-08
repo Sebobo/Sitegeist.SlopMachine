@@ -93,6 +93,8 @@ final class SharedWorkspaceInstructionsProvider implements InstructionsProvider
               create there - an inherited, already published node - is refused, and removing it is not what you want
               in the first place: in your own workspace, DiscardChanges restores an edited node to its published state
               instead of deleting it.
+            - A move leaves two changes behind: the node is created at the new position and removed at the old one.
+              ListUnpublishedChanges reports both.
             - To remove content from the workspace you publish into, use RemoveFromSharedWorkspace. That is a permanent
               deletion in a workspace humans work in, so read it first and remove the smallest possible node. There is
               no undo for it, which is another reason to hand over only finished packages.

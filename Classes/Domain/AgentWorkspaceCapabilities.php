@@ -202,7 +202,7 @@ class AgentWorkspaceCapabilities
         description: 'Removes one or more nodes, including all of their descendants, from your own workspace.
             A node that you created in this workspace is deleted with its whole subtree - it is not a soft removal that a reviewer would see as pending.
             Use it only for content you created yourself that must not end up in the review workspace.
-            A node that exists in the base workspace is only marked as removed - that deletion is a change a reviewer has to publish.
+            A node that exists in the base workspace is refused: removing inherited content is not what removal is for.
             To undo your own edits and keep the content as it was in the base workspace, use DiscardChanges instead.
             If more than one node is affected, pass all nodeAggregateIds in a single call.
             Returns one result entry per requested nodeAggregateId, in the requested order.',

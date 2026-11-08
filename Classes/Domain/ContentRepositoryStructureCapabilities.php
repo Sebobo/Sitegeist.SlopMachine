@@ -44,7 +44,9 @@ class ContentRepositoryStructureCapabilities
         description: 'Moves a node below another node, keeping its properties and its children.
             Use this when a page was created in the wrong place, for example a product page that should sit below
             its product area page but was created as a sibling of it. The node keeps its identity, so references and
-            node:// links to it stay valid.',
+            node:// links to it stay valid.
+            The move leaves two changes behind: the node is created at the new position and removed at the old one.
+            ListUnpublishedChanges reports both.',
     )]
     public function moveNode(
         #[Schema(

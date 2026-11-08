@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace Sitegeist\SlopMachine\Domain;
 
+use Neos\ContentRepository\Domain\Service\ContentDimensionPresetSourceInterface;
 use Sitegeist\Pandora\Instruction\InstructionsProvider;
 
 final class ContentRepositoryInstructionsProvider implements InstructionsProvider
 {
+    public function __construct(
+        private readonly ContentDimensionPresetSourceInterface $presetSource,
+    ) {
+    }
+
     public function getInstructions(): string
     {
         return 'Welcome to the Neos Content Repository. The content repository is a property graph structure consisting of nodes and relations.
@@ -18,6 +24,7 @@ final class ContentRepositoryInstructionsProvider implements InstructionsProvide
             The Neos Content Repository uses a strictly validated CQRS model. All command or query parameters are strictly validated, errors are clearly communicated.
             Any decisions made by the tools are communicated in their response.
             A `success: true` response confirms the command was accepted; the write itself has happened. Re-read the affected properties when exact values matter: `uriPathSegment` is silently re-suffixed by the content repository on collision (so the stored value can be `beratung-1` while the call reported `beratung`), and a write that became a duplicate is only visible after a read. Use read-back before declaring a write done when the value must match what was sent.
+            Setting a property to null removes it - there is no separate command for that. A read back then shows the property as null or leaves it out.
             A batch write answers with the outcome of the batch instead of a single flag: `successCount` and `failureCount` count the commands that succeeded and failed, and `results` holds one entry per command in the order the commands were sent, each with its own `success` flag and, for a created node, its `nodeAggregateId` and the ids of its tethered children. A failed command does not undo the commands before it, so correct the failed ones and send them again.
             Every node a read returns carries its own visibility state next to its properties: hidden, hiddenInIndex, hiddenBeforeDateTime and hiddenAfterDateTime. They are not properties of the node type - the node type does not declare them - but SetNodeProperties accepts them all the same, and reading them back is how a hide or an unhide is confirmed.
             A value is checked against the validators the node type declares before it is written, and a violating value is rejected with a message naming the property and the limit. Read the validation field of the property in the node type schema first - constraints is the part to act on - and do not take editorOptions for a limit: an editor may suggest 160 characters for a field whose validator allows 230. A rejected write changes nothing, so correcting the value and sending the command again is always safe.
@@ -25,11 +32,50 @@ final class ContentRepositoryInstructionsProvider implements InstructionsProvide
             Always stick to the schema, do not send undeclared parameters.
             The schema does not have to be validated on the client side, never send any ping or test calls. Those are a pure waste of time.
             Every tool that reads or writes content takes a dimension space point, and the point has to be one this installation allows. Call the dimensionspace tool once at the start to get the points that are valid, and use one of them for all following calls; if it reports a single empty object, that empty object {} is the point to use. A point that names a dimension or value this installation does not have is rejected instead of being silently ignored.
+            A dimension preset can carry a fallback chain: the values are ordered, and a dimension value without a variant of its own falls back to the next value of the chain. Reading in one dimension can therefore return the content of another one - the node you read may be the variant of the next value in the chain, not the one you asked for. A write always lands in the dimension you write in: it creates the variant there if it does not exist yet.
+            ' . $this->fallbackChainsInstruction() . '
             Every read is capped. When a read reports truncated, it also reports a nextCursor: send that cursor back as the cursor parameter to get the next page. The cursor is a best effort resume position, not a snapshot - nodes that are added to or removed from the subtree in between can change what the next page holds.
             A document owns content of its own and it may also parent other documents, and each of those brings its own content with it. Use find-content for the content of one document and find-documents for the documents below it; find-descendants mixes both and is the expensive one.
             Call the dimensionspace tool on every run rather than assuming the point from a previous run: which dimensions exist is a property of the installation and can change.
             Check with the query-patterns tool on how to encode parameters.
             Assets are not part of the content repository. An asset uploaded with the upload-asset tool is live the moment the call returns: it is not part of any workspace, and neither DiscardChanges nor RemoveNode can take it back. Every upload goes into one asset collection and carries a tag, so that a human can find and remove it again.
             To put an uploaded asset on a page, pass the assetId the upload returned as the value of the image property with SetNodeProperties. The value is stored as the asset itself, not as its id.';
+    }
+
+    /**
+     * The presets of this installation that carry a fallback chain.
+     *
+     * The values of a preset are ordered: a dimension value without a variant of its own falls
+     * back to the next value of the chain. Which presets have such a chain is a property of the
+     * installation, so it is read from the configuration instead of being written down here.
+     */
+    private function fallbackChainsInstruction(): string
+    {
+        $chains = [];
+        foreach ($this->presetSource->getAllPresets() as $dimensionName => $dimensionConfiguration) {
+            foreach ($dimensionConfiguration['presets'] ?? [] as $presetIdentifier => $presetConfiguration) {
+                $values = array_values((array)($presetConfiguration['values'] ?? []));
+                // A preset with a single value has no chain, and the preset without values is the
+                // one that shows every variant - neither is worth a word.
+                if (count($values) < 2) {
+                    continue;
+                }
+                $chains[] = sprintf(
+                    'the "%s" preset of the %s dimension (%s)',
+                    (string)($presetConfiguration['label'] ?? $presetIdentifier),
+                    $dimensionName,
+                    implode(', ', $values)
+                );
+            }
+        }
+
+        if ($chains === []) {
+            return 'No preset of this installation carries a fallback chain.';
+        }
+
+        return sprintf(
+            'The following presets of this installation carry a fallback chain: %s.',
+            implode('; ', $chains)
+        );
     }
 }
