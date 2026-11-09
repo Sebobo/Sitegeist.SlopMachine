@@ -341,6 +341,27 @@ composer lint          # phpcs and phpstan
 vendor/bin/phpstan analyse -c phpstan.neon
 ```
 
+### The tests
+
+The tests are functional tests: they run against a content repository and let the **policies of
+Neos** decide what the agent may do. They need an installation with Neos - a Flow installation
+is not enough, because the content repository and the node types come with Neos:
+
+```console
+FLOW_CONTEXT=Testing bin/phpunit --colors -c Build/BuildEssentials/PhpUnit/FunctionalTests.xml Packages/Application/Sitegeist.SlopMachine/Tests/Functional/
+```
+
+What they hold:
+
+- the agent may read its own personal workspace and the shared review workspace,
+- the agent may **not** read the personal workspace of another user,
+- the agent may **not** publish to the live workspace,
+- the agent may **not** log in with a password,
+- the agent may **not** reach its own workspace without the assignment of the agent to a user,
+- a capability that is not granted is not visible to the agent,
+- no capability switches the authorization checks off,
+- the URL of the preview names the workspace it renders and carries no credential.
+
 A new capability is a class with an `#[McpTool]` attribute in `Classes/Domain`. It is
 discovered automatically, and it gets a privilege target
 `Sitegeist.SlopMachine:Capability.Tool.<the name of the tool>` - which has to be granted in the

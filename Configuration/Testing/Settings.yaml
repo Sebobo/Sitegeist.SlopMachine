@@ -1,0 +1,10 @@
+# The settings of the tests. They are only available in the "Testing" context.
+#
+# The user information of the policy expressions: the account of the agent is a machine account
+# without a Neos user of its own, so the service answers with the user the agent is assigned
+# to - the same wiring an installation does in its own settings.
+Neos:
+  Flow:
+    aop:
+      globalObjects:
+        userInformation: Sitegeist\SlopMachine\Security\AgentAwareUserService

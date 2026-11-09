@@ -1,0 +1,35 @@
+# The policy of the tests. It is only available in the "Testing" context.
+#
+# The role mirrors the role an installation gives the account of the agent: the workspace
+# access for the internal workspaces, the privilege of the preview, and the capabilities the
+# tests use. Everything that is not granted is hidden from the agent - that is the point of the
+# deny-by-default of the MCP capabilities.
+roles:
+  'Sitegeist.SlopMachine:TestAgent':
+    label: 'MCP Agent (test)'
+    description: 'The role of the account of the agent in the tests.'
+    parentRoles: ['Neos.ContentRepository:InternalWorkspaceAccess']
+    privileges:
+      # No login with a password: the agent is authenticated by a bearer token.
+      - privilegeTarget: 'Neos.Neos:BackendLogin'
+        permission: DENY
+
+      # The endpoint itself.
+      - privilegeTarget: 'Sitegeist.Pandora:MCP'
+        permission: GRANT
+
+      # The preview of a document is a frontend request.
+      - privilegeTarget: 'Neos.Neos:ContentPreview'
+        permission: GRANT
+
+      # The capabilities the tests use.
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-children'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.ListUnpublishedChanges'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.SetNodeProperties'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.PublishOwnWorkspace'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.PreviewDocument'
+        permission: GRANT
