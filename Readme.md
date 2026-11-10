@@ -156,16 +156,43 @@ use, and a capability that is not granted is silently hidden from the agent. The
 capabilities of this package is in the header of the `Policy.yaml` of the package - and
 `./flow capability:list --role "Acme.Ai:McpAgent"` shows what a role unlocks.
 
+The package ships two roles for the agent, so an installation does not have to name the
+capabilities itself:
+
+| Role | What it grants |
+| --- | --- |
+| `Sitegeist.SlopMachine:McpAgent` | the read-only baseline: everything that only reads |
+| `Sitegeist.SlopMachine:McpAgentWithWriteAccess` | the baseline plus the capabilities that create, change or remove content |
+
+An installation that lets its agent write grants the second one - either directly, or through
+a role of its own that inherits from it:
+
 ```yaml
 # Configuration/Policy.yaml
 roles:
   'Acme.Ai:McpAgent':
     label: 'MCP Agent'
     description: 'Lets a token-authenticated agent drive the content repository over /mcp'
-    # The workspace access: the internal workspaces - the shared review workspace and the topic
-    # workspaces. Nothing else from the editor roles, so a leaked token does not become a
-    # backend editor.
-    parentRoles: ['Neos.ContentRepository:InternalWorkspaceAccess']
+    # The capabilities of the agent and the workspace access. The role of the package inherits
+    # from Neos.Neos:RestrictedEditor, which grants the access to the internal workspaces - the
+    # shared review workspace and the topic workspaces - and nothing else, so a leaked token
+    # does not become a backend editor.
+    parentRoles: ['Sitegeist.SlopMachine:McpAgentWithWriteAccess']
+```
+
+An installation that wants the agent to read and nothing else inherits from
+`Sitegeist.SlopMachine:McpAgent` instead. A role of its own is only needed when the agent
+shall have more or less than the package grants - for example when the agent may not remove
+content, in which case the writing capabilities are granted one by one, as the header of the
+`Policy.yaml` of the package lists them.
+
+```yaml
+# Configuration/Policy.yaml
+roles:
+  'Acme.Ai:McpAgent':
+    label: 'MCP Agent'
+    description: 'Lets a token-authenticated agent drive the content repository over /mcp'
+    parentRoles: ['Sitegeist.SlopMachine:McpAgent']
     privileges:
       # No login with a password: the agent is authenticated by a bearer token.
       - privilegeTarget: 'Neos.Neos:BackendLogin'

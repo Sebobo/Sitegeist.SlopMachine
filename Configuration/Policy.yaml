@@ -1,8 +1,14 @@
 # The role of the AI agent: a machine identity that works in the content repository over MCP.
 #
 # Every MCP capability is deny-by-default, so each one the agent may use has to be granted here
-# explicitly. The list below is the read-only baseline: an agent that may look, but not write.
-# Grant the writing capabilities explicitly if the agent is supposed to create or change content:
+# explicitly. The package ships two roles for the agent:
+#
+#   Sitegeist.SlopMachine:McpAgent                 the read-only baseline: an agent that may look,
+#                                                   but not write
+#   Sitegeist.SlopMachine:McpAgentWithWriteAccess  the baseline plus the capabilities that create,
+#                                                   change or remove content
+#
+# An installation grants one of them to the account of the agent. The write role grants:
 #
 #   Sitegeist.SlopMachine:Capability.Tool.CreateNodeAggregateWithNode
 #   Sitegeist.SlopMachine:Capability.Tool.SetNodeProperties
@@ -110,4 +116,62 @@ roles:
       - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-documents-in-shared-workspace'
         permission: GRANT
       - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-descendants-in-shared-workspace'
+        permission: GRANT
+
+      # The preview of a document: the rendered page of the workspace the agent works in. It only
+      # reads, so an agent that may look at the content may look at how it is rendered.
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.PreviewDocument'
+        permission: GRANT
+
+  # The role of an agent that may write: the read-only baseline of the role above plus the
+  # capabilities that create, change or remove content. The writing capabilities run inside
+  # withoutAuthorizationChecks(), so this list is the only gate for them.
+  'Sitegeist.SlopMachine:McpAgentWithWriteAccess':
+    label: 'MCP Agent (write access)'
+    description: 'Lets a token-authenticated agent read and write the content repository over /mcp'
+    parentRoles: ['Sitegeist.SlopMachine:McpAgent']
+    privileges:
+      # Writing the content repository: creating nodes, changing their properties and their
+      # references, changing several of them at once and moving them.
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.CreateNodeAggregateWithNode'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.SetNodeProperties'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.SetNodeReferences'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.BulkWriting'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.MoveNode'
+        permission: GRANT
+
+      # Uploading is a write: the asset is live immediately, no tool can take it back, and it
+      # ends up in the media collection like any other upload.
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.upload-asset'
+        permission: GRANT
+
+      # Own workspace: removal and revert. RemoveNode and DiscardChanges are the two destructive
+      # entries here - drop them to let the agent write but not destroy content.
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.RemoveNode'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.DiscardChanges'
+        permission: GRANT
+
+      # The hand-over itself: the agent publishes its own workspace into the workspace it is
+      # based on, exactly like an editor does. It can never publish into live - the base
+      # workspace of the agent's own workspace is the only target, and that is never live.
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.PublishOwnWorkspace'
+        permission: GRANT
+
+      # Topic workspaces: one workspace per topic the agent works on, based on the shared review
+      # workspace. They let two agents on different topics work without writing over each other:
+      # the agent creates one, rebases its own workspace onto it, and from then on its hand-over
+      # lands in the topic workspace, which a human reviews and publishes.
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.CreateTopicWorkspace'
+        permission: GRANT
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.RebaseOwnWorkspace'
+        permission: GRANT
+
+      # Removal from the shared review workspace: a write into a workspace humans review, so it
+      # is the entry to think twice about.
+      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.RemoveFromSharedWorkspace'
         permission: GRANT
