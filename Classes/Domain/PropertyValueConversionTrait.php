@@ -29,6 +29,12 @@ trait PropertyValueConversionTrait
             return $value;
         }
 
+        if ($value === null) {
+            // A null value removes the property - there is nothing to convert, and the
+            // property mapper has no converter for null either.
+            return null;
+        }
+
         if (\interface_exists($expectedType) && \is_a($expectedType, ResourceBasedInterface::class, true)) {
             return $this->convertAssetPropertyValue($propertyName, $expectedType, $value);
         }
