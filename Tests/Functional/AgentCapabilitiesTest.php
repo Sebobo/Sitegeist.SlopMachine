@@ -87,6 +87,36 @@ class AgentCapabilitiesTest extends AgentTestCase
         self::assertGreaterThan(0, $result['returnedCount'] ?? 0, 'The agent reads its own workspace.');
     }
 
+    public function testAnImagePropertyCanBeRemoved(): void
+    {
+        $document = $this->documentIn($this->agentWorkspace);
+        self::assertInstanceOf(NodeInterface::class, $document);
+
+        $capabilities = $this->capability(ContentRepositoryWritingCapabilities::class);
+
+        // An image element without an image - the element is created, the image is added later.
+        $created = $capabilities->createNodeAggregateWithNode([
+            'nodeTypeName' => self::IMAGE_NODE_TYPE,
+            'parentNodeAggregateId' => $this->mainCollectionIdOf($document),
+            'originDimensionSpacePoint' => $this->dimensionSpacePoint(),
+            'initialPropertyValues' => ['title' => 'An image'],
+        ]);
+        $imageNodeId = $created['structuredContent']['nodeAggregateId'] ?? null;
+        self::assertIsString($imageNodeId);
+
+        // A null value removes the property - it is not converted into an asset.
+        $result = $capabilities->setNodeProperties([
+            'nodeAggregateId' => $imageNodeId,
+            'originDimensionSpacePoint' => $this->dimensionSpacePoint(),
+            'propertyValues' => ['image' => null],
+        ]);
+
+        self::assertTrue(
+            $result['structuredContent']['success'] ?? false,
+            'The image property can be removed: ' . (string)($result['structuredContent']['message'] ?? '')
+        );
+    }
+
     /**
      * A capability: the handler container builds them, because they are not proxied.
      *
@@ -134,13 +164,33 @@ class AgentCapabilitiesTest extends AgentTestCase
      */
     protected function siteRootAggregateId(): string
     {
+        return $this->siteRoot()->getIdentifier();
+    }
+
+    /**
+     * The root node of the site of the tests.
+     */
+    protected function siteRoot(): NodeInterface
+    {
         $context = $this->contextFactory->create([
             'workspaceName' => $this->agentWorkspace->getName(),
             'dimensions' => $this->dimensions(),
         ]);
         $siteNode = $context->getNode('/sites/' . $this->siteNodeName);
-        self::assertNotNull($siteNode);
+        self::assertInstanceOf(NodeInterface::class, $siteNode);
 
-        return $siteNode->getIdentifier();
+        return $siteNode;
+    }
+
+    /**
+     * The aggregate id of the content collection of a document - the "main" collection, where
+     * its content lives.
+     */
+    protected function mainCollectionIdOf(NodeInterface $document): string
+    {
+        $main = $document->getNode('main');
+        self::assertInstanceOf(NodeInterface::class, $main);
+
+        return $main->getIdentifier();
     }
 }

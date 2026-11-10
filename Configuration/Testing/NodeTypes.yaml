@@ -1,0 +1,36 @@
+# The node types of the tests. They are only available in the "Testing" context.
+#
+# The tests must not depend on the node types of the installation they run in, so the types
+# they need are defined here. The super types are the ones of Neos itself, so the tests run
+# against the distribution of the CI as well.
+#
+# A document that owns its content in a collection, and a content element with an image - the
+# two things the tests write.
+
+'Sitegeist.SlopMachine:Testing:Document.Page':
+  superTypes:
+    'Neos.Neos:Document': true
+  properties:
+    title:
+      type: string
+  childNodes:
+    main:
+      type: 'Neos.Neos:ContentCollection'
+
+'Sitegeist.SlopMachine:Testing:Content.Text':
+  superTypes:
+    'Neos.Neos:Content': true
+  properties:
+    text:
+      type: string
+
+'Sitegeist.SlopMachine:Testing:Content.Image':
+  superTypes:
+    'Neos.Neos:Content': true
+  properties:
+    image:
+      type: 'Neos\Media\Domain\Model\ImageInterface'
+    alternativeText:
+      type: string
+    title:
+      type: string

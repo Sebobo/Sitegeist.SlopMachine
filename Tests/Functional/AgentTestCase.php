@@ -7,6 +7,7 @@ namespace Sitegeist\SlopMachine\Tests\Functional;
 use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Neos\ContentRepository\Domain\Model\Workspace;
 use Neos\ContentRepository\Domain\Repository\WorkspaceRepository;
+use Neos\ContentRepository\Domain\Service\ContentDimensionCombinator;
 use Neos\ContentRepository\Domain\Service\ContextFactoryInterface;
 use Neos\ContentRepository\Domain\Service\NodeTypeManager;
 use Neos\Flow\Security\Account;
@@ -20,6 +21,7 @@ use Neos\Neos\Domain\Repository\SiteRepository;
 use Neos\Neos\Domain\Service\UserService;
 use Neos\Neos\Utility\User as UserUtility;
 use Sitegeist\Pandora\Infrastructure\CapabilityHandlerContainer;
+use Sitegeist\SlopMachine\Domain\DimensionSpacePointResolver;
 use Sitegeist\SlopMachine\Domain\Model\AgentAssignment;
 use Sitegeist\SlopMachine\Domain\Repository\AgentAssignmentRepository;
 
@@ -57,6 +59,17 @@ abstract class AgentTestCase extends FunctionalTestCase
      * token, and it is what the assignment of the agent is keyed by.
      */
     protected const AGENT_ID = 'the-agent-token-hash';
+
+    /**
+     * The document type of the tests - a type of this package, so that the tests do not
+     * depend on the node types of the installation they run in.
+     */
+    protected const PAGE_NODE_TYPE = 'Sitegeist.SlopMachine:Testing:Document.Page';
+
+    /**
+     * The content element with an image, of the tests.
+     */
+    protected const IMAGE_NODE_TYPE = 'Sitegeist.SlopMachine:Testing:Content.Image';
 
     protected ContextFactoryInterface $contextFactory;
     protected NodeTypeManager $nodeTypeManager;
@@ -150,7 +163,7 @@ abstract class AgentTestCase extends FunctionalTestCase
             $siteNode = $context->getNode('/sites/' . $this->siteNodeName);
             self::assertNotNull($siteNode);
 
-            $document = $siteNode->createNode('secret', $this->nodeTypeManager->getNodeType('Neos.Neos:Document'));
+            $document = $siteNode->createNode('secret', $this->nodeTypeManager->getNodeType(self::PAGE_NODE_TYPE));
             $document->setProperty('title', 'Secret');
 
             $this->persistenceManager->persistAll();
@@ -242,31 +255,40 @@ abstract class AgentTestCase extends FunctionalTestCase
         $sitesNode = $rootNode->createNode('sites', $this->nodeTypeManager->getNodeType('Neos.Neos:Sites'));
         $siteNode = $sitesNode->createNode($this->siteNodeName, $this->nodeTypeManager->getNodeType('Neos.Neos:Site'));
 
-        $page = $siteNode->createNode('home', $this->nodeTypeManager->getNodeType('Neos.Neos:Document'));
+        $page = $siteNode->createNode('home', $this->nodeTypeManager->getNodeType(self::PAGE_NODE_TYPE));
         $page->setProperty('title', 'Home');
     }
 
     /**
      * The dimensions of the content of the tests.
      *
-     * The installation has a language dimension, and the capabilities of the agent need a
-     * dimension space point that covers it.
+     * They are the dimensions of the installation the tests run in - the tests must not depend
+     * on a dimension the installation may not have. The dimension space point is resolved
+     * against the dimensions of the installation, the same way the agent resolves it.
      *
      * @return array<string,list<string>>
      */
     protected function dimensions(): array
     {
-        return ['language' => ['de']];
+        return $this->getObject(DimensionSpacePointResolver::class)->resolve($this->dimensionSpacePoint());
     }
 
     /**
-     * The dimension space point of the capabilities of the agent.
+     * The dimension space point of the installation - the first one the dimensionspace tool
+     * reports.
      *
      * @return array<string,string>
      */
     protected function dimensionSpacePoint(): array
     {
-        return ['language' => 'de'];
+        $combinations = $this->getObject(ContentDimensionCombinator::class)->getAllAllowedCombinations();
+        $firstCombination = \reset($combinations);
+        $point = [];
+        foreach ($firstCombination ?: [] as $dimensionName => $dimensionValues) {
+            $point[$dimensionName] = (string)\reset($dimensionValues);
+        }
+
+        return $point;
     }
 
     /**

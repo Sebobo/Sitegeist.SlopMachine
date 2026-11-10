@@ -41,7 +41,10 @@ class AgentWorkspaceAccessTest extends AgentTestCase
 
     public function testTheAgentMayNotPublishToTheLiveWorkspace(): void
     {
-        $context = $this->contextFactory->create(['workspaceName' => $this->agentWorkspace->getName()]);
+        $context = $this->contextFactory->create([
+            'workspaceName' => $this->agentWorkspace->getName(),
+            'dimensions' => $this->dimensions(),
+        ]);
         $siteNode = $context->getNode('/sites/' . $this->siteNodeName);
         self::assertInstanceOf(Node::class, $siteNode);
 

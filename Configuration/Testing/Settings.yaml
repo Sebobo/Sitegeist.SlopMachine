@@ -3,6 +3,9 @@
 # The user information of the policy expressions: the account of the agent is a machine account
 # without a Neos user of its own, so the service answers with the user the agent is assigned
 # to - the same wiring an installation does in its own settings.
+#
+# The content dimensions are not defined here: the tests take the dimension space point of the
+# installation they run in, the same way the agent takes it from the dimensionspace tool.
 Neos:
   Flow:
     aop:
