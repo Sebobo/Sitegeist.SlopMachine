@@ -1,35 +1,23 @@
 # The policy of the tests. It is only available in the "Testing" context.
 #
-# The role mirrors the role an installation gives the account of the agent: the workspace
-# access for the internal workspaces, the privilege of the preview, and the capabilities the
-# tests use. Everything that is not granted is hidden from the agent - that is the point of the
-# deny-by-default of the MCP capabilities.
+# The role mirrors the role an installation gives the account of the agent: it inherits the
+# read-only baseline of this package and adds only what the tests write with. The baseline
+# brings the endpoint, the denial of the backend login, the reading capabilities and the
+# preview; with Neos.Neos:RestrictedEditor it also brings the access to the internal
+# workspaces and, with Neos.Neos:AbstractEditor, the frontend preview.
+#
+# Deliberately not Sitegeist.SlopMachine:McpAgentWithWriteAccess: the tests have to see a
+# capability that is not granted, and a role that grants every write capability could not
+# show that.
 roles:
   'Sitegeist.SlopMachine:TestAgent':
     label: 'MCP Agent (test)'
     description: 'The role of the account of the agent in the tests.'
-    parentRoles: ['Neos.ContentRepository:InternalWorkspaceAccess']
+    parentRoles: ['Sitegeist.SlopMachine:McpAgent']
     privileges:
-      # No login with a password: the agent is authenticated by a bearer token.
-      - privilegeTarget: 'Neos.Neos:BackendLogin'
-        permission: DENY
-
-      # The endpoint itself.
-      - privilegeTarget: 'Sitegeist.Pandora:MCP'
-        permission: GRANT
-
-      # The preview of a document is a frontend request.
-      - privilegeTarget: 'Neos.Neos:ContentPreview'
-        permission: GRANT
-
-      # The capabilities the tests use.
-      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.find-children'
-        permission: GRANT
-      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.ListUnpublishedChanges'
-        permission: GRANT
+      # The writing capabilities the tests use. Everything a capability needs besides them -
+      # the endpoint, the login denial, the preview - comes with the parent role.
       - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.SetNodeProperties'
         permission: GRANT
       - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.PublishOwnWorkspace'
-        permission: GRANT
-      - privilegeTarget: 'Sitegeist.SlopMachine:Capability.Tool.PreviewDocument'
         permission: GRANT
